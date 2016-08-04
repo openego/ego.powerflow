@@ -7,8 +7,8 @@ import pandas as pd
 import sqlalchemy
 from pypsa import io
 
-from calc_ego_hv_powerflow import Bus, Line, Generator, Load, Storage, Source, Transformer, TempResolution
-from calc_ego_hv_powerflow import BusVMagSet, GeneratorPqSet, LoadPqSet, StoragePqSet
+from egoio.db_tables.calc_ego_hv_powerflow import Bus, Line, Generator, Load, Storage, Source, Transformer, TempResolution
+from egoio.db_tables.calc_ego_hv_powerflow import BusVMagSet, GeneratorPqSet, LoadPqSet, StoragePqSet
 
 
 
@@ -43,28 +43,41 @@ for tablename in tablenames:
 
 component_data[Transformer] = pd.read_sql_query(session.query(Transformer).statement,session.bind,index_col="trafo_id")
 
+# -------------------------------------------------------
+# Time series generation
+# -------------------------------------------------------
+temp_id_set = 1
+query = session.query(TempResolution.start_time).filter(TempResolution.temp_id == temp_id_set)
+start_time = query.all()
+start_time = ''.join(str(i) for i in start_time[0])
+
+query = session.query(TempResolution.timesteps).filter(TempResolution.temp_id == temp_id_set)
+periods = query.all()
+periods =int(''.join(str(i) for i in  periods[0]))
+
+query = session.query(TempResolution.resolution).filter(TempResolution.temp_id == temp_id_set)
+frequency = query.all()
+frequency = ''.join(str(i) for i in frequency[0])
+
+time_range = pd.DatetimeIndex(freq=frequency,periods=periods,start=start_time)
 
 # -------------------------------------------------------
 # Time series data import
 # -------------------------------------------------------
 time_series_data = {BusVMagSet, GeneratorPqSet, LoadPqSet, StoragePqSet}
 
-query = session.query(GeneratorPqSet.generator_id, GeneratorPqSet.q_set)
-gen_q_set = pd.read_sql_query(query.statement,session.bind,index_col="generator_id")
+query = session.query(GeneratorPqSet.generator_id, GeneratorPqSet.p_set)
+gen_p_set = pd.read_sql_query(query.statement,session.bind,index_col="generator_id")
 
 query = session.query(BusVMagSet)
 busvmagset_data = pd.read_sql_query(query.statement,session.bind,index_col="bus_id")
 
 # -------------------------------------------------------
-# Time series generation
+# Time series data manipulation for PyPSA
 # -------------------------------------------------------
-query = session.query(TempResolution.start_time).filter(TempResolution.temp_id == 1)
-start_time = query.all()
-start_time = ''.join(str(i) for i in start_time).replace(",","").replace("(","").replace(")","")
 
-time_range = pd.DatetimeIndex(freq="h",periods=10,start=start_time)
-gen_q_set.index = [str(i) for i in gen_q_set.index]
-gen_q_set2 = gen_q_set['q_set'].apply(pd.Series).transpose().set_index(time_range)
+gen_p_set.index = [str(i) for i in gen_p_set.index]
+gen_p_set = gen_p_set['p_set'].apply(pd.Series).transpose().set_index(time_range)
 
 
 # -------------------------------------------------------
@@ -81,10 +94,10 @@ network.import_components_from_dataframe(component_data[Transformer],'Transforme
 network.import_components_from_dataframe(component_data[Generator],'Generator')
 network.import_components_from_dataframe(component_data[Load],'Load')
 
-io.import_series_from_dataframe(network,gen_q_set2,"Generator","q_set")
+io.import_series_from_dataframe(network,gen_p_set,"Generator","p_set")
 
 now = network.snapshots[5:7]
-print(network.generators_t.q_set)
+print(network.generators_t.p_set)
 
 network.pf(now)
 
