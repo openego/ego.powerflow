@@ -7,5 +7,6 @@ setup(name='egopowerflow',
       install_requires=['pandas >= 0.17.0',
                         'pypsa >= 0.5'
                         'sqlalchemy',
-                        egoio]
+                        'egoio',
+                        'oemof.db']
      )
