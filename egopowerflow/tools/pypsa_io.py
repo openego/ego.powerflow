@@ -3,6 +3,7 @@ import pandas as pd
 
 from sqlalchemy.orm import sessionmaker, load_only
 from sqlalchemy import create_engine
+from datetime import datetime
 from pypsa import io
 from oemof import db
 
@@ -89,17 +90,55 @@ def get_pq_sets(session, table, columns=None, index_col=None, slicer=None):
                                index_col=index_col)
 
     # slice relevant part by given slicer
-    #TODO: implement slicing of p,q-array   
+    #TODO: implement slicing of p,q-array
 
     return pq_set
 
+
+def get_timerange(session, temp_id_set):
+    """
+    Parameters
+    ----------
+    session: SQLAlchemy session object
+
+    Returns
+    -------
+    timerange: Pandas DatetimeIndex
+        Time range to be analyzed by PF
+    """
+
+    query = session.query(TempResolution.start_time).filter(
+        TempResolution.temp_id == temp_id_set)
+    start_date = query.all()
+    start_date = ''.join(str(i) for i in start_date[0])
+
+    query = session.query(TempResolution.timesteps).filter(
+        TempResolution.temp_id == temp_id_set)
+    periods = query.all()
+    periods = int(''.join(str(i) for i in periods[0]))
+
+    query = session.query(TempResolution.resolution).filter(
+        TempResolution.temp_id == temp_id_set)
+    frequency = query.all()
+    frequency = ''.join(str(i) for i in frequency[0])
+
+    timerange = pd.DatetimeIndex(freq=frequency,
+                                 periods=periods,
+                                 start=start_date)
+
+    return timerange
 
 
 if __name__ == '__main__':
     session = oedb_session()
 
     gen_cols = ['temp_id', 'p_set', 'q_set']
+    temp_id_set = 1
 
     gen_pq_set = get_pq_sets(session, GeneratorPqSet, index_col='generator_id',
                              columns=gen_cols)
+
+    timerange = get_timerange(session, temp_id_set)
+    gen_pq_set = gen_pq_set['p_set'].apply(pd.Series).transpose().set_index(timerange)
+
     print(gen_pq_set)
