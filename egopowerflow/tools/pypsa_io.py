@@ -152,6 +152,35 @@ def transform_timeseries4pypsa(timeseries, timerange, column=None):
             pd.Series).transpose().set_index(timerange)
 
     return pypsa_timeseries
+
+
+def import_components(tables):
+    """
+    Import PF power system components (Lines, Buses, Generators, ...)
+
+    Parameters
+    ----------
+    tables: list of SQLAlchemy orm table object
+        Considered power system component tables
+
+    Returns
+    -------
+    components: dict
+
+    """
+    component_data = {}
+
+    for table in tables:
+        if table.__name__ is not 'Transformer':
+            id_col = str(table.__name__).lower() + "_id"
+        elif table.__name__ is 'Transformer':
+            id_col = 'trafo_id'
+
+        component_data[table.__name__] = pd.read_sql_query(
+            session.query(table).statement, session.bind,
+            index_col=id_col)
+
+    return component_data
 if __name__ == '__main__':
     session = oedb_session()
 
@@ -167,3 +196,10 @@ if __name__ == '__main__':
     gen_p_set = transform_timeseries4pypsa(gen_pq_set,
                                             timerange,
                                             column='p_set')
+
+    # define relevant tabkes
+    tables = [Bus, Line, Generator, Load, Transformer]
+
+    # get components from database tables
+    components = import_components(tables)
+
