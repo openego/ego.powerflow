@@ -10,12 +10,12 @@ from oemof import db
 from egoio.db_tables.calc_ego_mv_powerflow import Bus, Line, Generator, Load, \
     Transformer, TempResolution, BusVMagSet, GeneratorPqSet, LoadPqSet
 
-def oedb_session():
+def oedb_session(section='oedb'):
     """Get SQLAlchemy session object with valid connection to OEDB"""
 
     # get session object by oemof.db tools (requires .oemof/config.ini
     try:
-        conn = db.connection(section='oedb')
+        conn = db.connection(section=section)
 
     except:
         print('Please provide connection parameters to database:')
