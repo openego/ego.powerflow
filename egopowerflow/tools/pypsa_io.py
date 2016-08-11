@@ -181,6 +181,34 @@ def import_components(tables):
             index_col=id_col)
 
     return component_data
+
+def create_powerflow_problem(timerange, components):
+    """
+    Create PyPSA network object and fill with data
+
+    Parameters
+    ----------
+    timerange: Pandas DatetimeIndex
+        Time range to be analyzed by PF
+    components: dict
+
+    Returns
+    -------
+    network: PyPSA powerflow problem object
+    """
+
+    # initialize powerflow problem
+    network, snapshots = init_pypsa_network(timerange)
+    network
+
+    # add components to network
+    for component in components.keys():
+        network.import_components_from_dataframe(components[component],
+                                                 component)
+
+    # add timeseries data
+
+    return network
 if __name__ == '__main__':
     session = oedb_session()
 
@@ -203,3 +231,5 @@ if __name__ == '__main__':
     # get components from database tables
     components = import_components(tables)
 
+    # create PyPSA powerflow problem
+    create_powerflow_problem(timerange, components)
