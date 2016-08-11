@@ -209,15 +209,22 @@ def create_powerflow_problem(timerange, components):
     # add timeseries data
 
     return network
+
+
 if __name__ == '__main__':
     session = oedb_session()
 
+    # define relevant tables of generator table
     gen_cols = ['temp_id', 'p_set', 'q_set']
+
+    # choose temp_id
     temp_id_set = 1
 
+    # examplary call of pq-set retrieval
     gen_pq_set = get_pq_sets(session, GeneratorPqSet, index_col='generator_id',
                              columns=gen_cols)
 
+    # define investigated time range
     timerange = get_timerange(session, temp_id_set)
 
     # examplary creation of generators p sets
