@@ -129,6 +129,29 @@ def get_timerange(session, temp_id_set):
     return timerange
 
 
+def transform_timeseries4pypsa(timeseries, timerange, column=None):
+    """
+    Transform pq-set timeseries to PyPSA compatible format
+
+    Parameters
+    ----------
+    timeseries: Pandas DataFrame
+        Containing timeseries
+
+    Returns
+    -------
+    pysa_timeseries: Pandas DataFrame
+        Reformated pq-set timeseries
+    """
+
+    if column is None:
+        pypsa_timeseries = timeseries.apply(
+            pd.Series).transpose().set_index(timerange)
+    else:
+        pypsa_timeseries = timeseries[column].apply(
+            pd.Series).transpose().set_index(timerange)
+
+    return pypsa_timeseries
 if __name__ == '__main__':
     session = oedb_session()
 
@@ -139,6 +162,8 @@ if __name__ == '__main__':
                              columns=gen_cols)
 
     timerange = get_timerange(session, temp_id_set)
-    gen_pq_set = gen_pq_set['p_set'].apply(pd.Series).transpose().set_index(timerange)
 
-    print(gen_pq_set)
+    # examplary creation of generators p sets
+    gen_p_set = transform_timeseries4pypsa(gen_pq_set,
+                                            timerange,
+                                            column='p_set')
