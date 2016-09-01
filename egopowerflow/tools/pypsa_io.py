@@ -208,6 +208,7 @@ def create_powerflow_problem(timerange, components):
 
     # add timeseries data
 
+    return network, snapshots
     return network
 
 
@@ -239,4 +240,4 @@ if __name__ == '__main__':
     components = import_components(tables)
 
     # create PyPSA powerflow problem
-    create_powerflow_problem(timerange, components)
+    network, snapshots = create_powerflow_problem(timerange, components)
