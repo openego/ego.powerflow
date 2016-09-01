@@ -209,6 +209,39 @@ def create_powerflow_problem(timerange, components):
     # add timeseries data
 
     return network, snapshots
+
+
+def import_pq_sets(session, network, pq_tables, timerange):
+    """
+    Import pq-set series to PyPSA network
+
+    Parameters
+    ----------
+    pq_tables: Pandas DataFrame
+        PQ set values for each time step
+
+    Returns
+    -------
+    network: PyPSA powerflow problem object
+        Altered network object
+    """
+
+    for table in pq_tables:
+        name = table.__table__.name.split('_')[0]
+        index_col = name + '_id'
+        component_name = name[:1].upper() + name[1:]
+        pq_set = get_pq_sets(session, table,
+                             index_col=index_col)
+        for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']
+                    if x in pq_set.columns.values]:
+            series = transform_timeseries4pypsa(pq_set,
+                                                timerange,
+                                                column=key)
+            io.import_series_from_dataframe(network,
+                                            series,
+                                            component_name,
+                                            key)
+
     return network
 
 
@@ -216,24 +249,24 @@ if __name__ == '__main__':
     session = oedb_session()
 
     # define relevant tables of generator table
-    gen_cols = ['temp_id', 'p_set', 'q_set']
+    pq_set_cols = ['temp_id', 'p_set', 'q_set']
+
 
     # choose temp_id
     temp_id_set = 1
 
     # examplary call of pq-set retrieval
     gen_pq_set = get_pq_sets(session, GeneratorPqSet, index_col='generator_id',
-                             columns=gen_cols)
+                             columns=pq_set_cols)
+    load_pq_set = get_pq_sets(session, LoadPqSet, index_col='load_id',
+                              columns=pq_set_cols)
+    bus_vmag_set = get_pq_sets(session, BusVMagSet, index_col='bus_id',
+                               columns=['temp_id', 'v_mag_pu_set'])
 
     # define investigated time range
     timerange = get_timerange(session, temp_id_set)
 
-    # examplary creation of generators p sets
-    gen_p_set = transform_timeseries4pypsa(gen_pq_set,
-                                            timerange,
-                                            column='p_set')
-
-    # define relevant tabkes
+    # define relevant tables
     tables = [Bus, Line, Generator, Load, Transformer]
 
     # get components from database tables
@@ -241,3 +274,17 @@ if __name__ == '__main__':
 
     # create PyPSA powerflow problem
     network, snapshots = create_powerflow_problem(timerange, components)
+
+    # import pq-set tables to pypsa network
+    pq_object = [GeneratorPqSet, LoadPqSet, BusVMagSet]
+    network = import_pq_sets(session,
+                             network,
+                             pq_object,
+                             timerange)
+
+    # start PF calculation
+    network.lpf(snapshots)
+
+
+    # close session
+    session.close()
