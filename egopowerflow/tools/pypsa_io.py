@@ -232,15 +232,16 @@ def import_pq_sets(session, network, pq_tables, timerange):
         component_name = name[:1].upper() + name[1:]
         pq_set = get_pq_sets(session, table,
                              index_col=index_col)
-        for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']
-                    if x in pq_set.columns.values]:
-            series = transform_timeseries4pypsa(pq_set,
-                                                timerange,
-                                                column=key)
-            io.import_series_from_dataframe(network,
-                                            series,
-                                            component_name,
-                                            key)
+        if not pq_set.empty:
+            for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']
+                        if x in pq_set.columns.values]:
+                series = transform_timeseries4pypsa(pq_set,
+                                                    timerange,
+                                                    column=key)
+                io.import_series_from_dataframe(network,
+                                                series,
+                                                component_name,
+                                                key)
 
     return network
 
