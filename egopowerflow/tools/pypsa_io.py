@@ -61,7 +61,8 @@ def init_pypsa_network(time_range_lim):
     return network, snapshots
 
 
-def get_pq_sets(session, table, columns=None, index_col=None, slicer=None):
+def get_pq_sets(session, table, scenario, columns=None, index_col=None,
+                slicer=None):
     """
 
     Parameters
@@ -69,6 +70,8 @@ def get_pq_sets(session, table, columns=None, index_col=None, slicer=None):
     session: SQLAlchemy sessino object
     table: SQLAlchemy orm table object
         Specified pq-sets table
+    scenario : str
+        Name of chosen scenario
     columns: list of strings
         Columns to be selected from pq-sets table (default None)
     index_col: string
@@ -84,9 +87,10 @@ def get_pq_sets(session, table, columns=None, index_col=None, slicer=None):
 
     # retrieve table
     if columns is not None:
-        pq_query = session.query(table).options(load_only(*columns))
+        pq_query = session.query(table).options(load_only(*columns)).\
+            filter(table.scn_name==scenario)
     else:
-        pq_query = session.query(table)
+        pq_query = session.query(table).filter(table.scn_name==scenario)
     pq_set = pd.read_sql_query(pq_query.statement,
                                session.bind,
                                index_col=index_col)
@@ -156,7 +160,7 @@ def transform_timeseries4pypsa(timeseries, timerange, column=None):
     return pypsa_timeseries
 
 
-def import_components(tables, session):
+def import_components(tables, session, scenario):
     """
     Import PF power system components (Lines, Buses, Generators, ...)
 
@@ -166,6 +170,8 @@ def import_components(tables, session):
         Considered power system component tables
     session : SQLAlchemy session object
         In this case it has to be a session connection to `OEDB`
+    scenario : str
+        Filter query by components of given scenario name
 
     Returns
     -------
@@ -179,9 +185,9 @@ def import_components(tables, session):
             id_col = str(table.__name__).lower() + "_id"
         elif table.__name__ is 'Transformer':
             id_col = 'trafo_id'
-
+        query = session.query(table).filter(table.scn_name==scenario)
         component_data[table.__name__] = pd.read_sql_query(
-            session.query(table).statement, session.bind,
+            query.statement, session.bind,
             index_col=id_col)
 
     return component_data
@@ -215,14 +221,19 @@ def create_powerflow_problem(timerange, components):
     return network, snapshots
 
 
-def import_pq_sets(session, network, pq_tables, timerange):
+def import_pq_sets(session, network, pq_tables, timerange, scenario):
     """
     Import pq-set series to PyPSA network
 
     Parameters
     ----------
+    session : SQLAlchemy session object
+        In this case it has to be a session connection to `OEDB`
+    network : PyPSA network container
     pq_tables: Pandas DataFrame
         PQ set values for each time step
+    scenario : str
+        Filter query by pq-sets for components of given scenario name
 
     Returns
     -------
@@ -234,7 +245,7 @@ def import_pq_sets(session, network, pq_tables, timerange):
         name = table.__table__.name.split('_')[0]
         index_col = name + '_id'
         component_name = name[:1].upper() + name[1:]
-        pq_set = get_pq_sets(session, table,
+        pq_set = get_pq_sets(session, table, scenario,
                              index_col=index_col)
         if not pq_set.empty:
             for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']

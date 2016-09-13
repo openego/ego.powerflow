@@ -8,6 +8,8 @@ from egoio.db_tables.calc_ego_mv_powerflow import Bus, Line, Generator, Load, \
 
 session = oedb_session()
 
+scenario = 'Status Quo'
+
 # define relevant tables of generator table
 pq_set_cols = ['temp_id', 'p_set', 'q_set']
 
@@ -16,11 +18,11 @@ pq_set_cols = ['temp_id', 'p_set', 'q_set']
 temp_id_set = 1
 
 # examplary call of pq-set retrieval
-gen_pq_set = get_pq_sets(session, GeneratorPqSet, index_col='generator_id',
-                         columns=pq_set_cols)
-load_pq_set = get_pq_sets(session, LoadPqSet, index_col='load_id',
+gen_pq_set = get_pq_sets(session, GeneratorPqSet, scenario,
+                         index_col='generator_id', columns=pq_set_cols)
+load_pq_set = get_pq_sets(session, LoadPqSet, scenario, index_col='load_id',
                           columns=pq_set_cols)
-bus_vmag_set = get_pq_sets(session, BusVMagSet, index_col='bus_id',
+bus_vmag_set = get_pq_sets(session, BusVMagSet, scenario, index_col='bus_id',
                            columns=['temp_id', 'v_mag_pu_set'])
 
 # define investigated time range
@@ -30,7 +32,7 @@ timerange = get_timerange(session, temp_id_set)
 tables = [Bus, Line, Generator, Load, Transformer]
 
 # get components from database tables
-components = import_components(tables, session)
+components = import_components(tables, session, scenario)
 
 # create PyPSA powerflow problem
 network, snapshots = create_powerflow_problem(timerange, components)
@@ -40,7 +42,8 @@ pq_object = [GeneratorPqSet, LoadPqSet, BusVMagSet]
 network = import_pq_sets(session,
                          network,
                          pq_object,
-                         timerange)
+                         timerange,
+                         scenario)
 
 # add coordinates to network nodes and make ready for map plotting
 network = add_coordinates(network)
