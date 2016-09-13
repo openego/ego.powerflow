@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from datetime import datetime
 from pypsa import io
 from oemof import db
+from geoalchemy2.shape import to_shape
 
 from egoio.db_tables.calc_ego_mv_powerflow import Bus, Line, Generator, Load, \
     Transformer, TempResolution, BusVMagSet, GeneratorPqSet, LoadPqSet
@@ -246,6 +247,24 @@ def import_pq_sets(session, network, pq_tables, timerange):
     return network
 
 
+def add_coordinates(network):
+    """
+    Add coordinates to nodes based on provided geom
+
+    Parameters
+    ----------
+    network : PyPSA network container
+
+    Returns
+    -------
+    Altered PyPSA network container ready for plotting
+    """
+    for idx, row in network.buses.iterrows():
+        wkt_geom = to_shape(row['geom'])
+        network.buses.loc[idx, 'x'] = wkt_geom.x
+        network.buses.loc[idx, 'y'] = wkt_geom.y
+
+    return network
 if __name__ == '__main__':
     session = oedb_session()
 
@@ -283,9 +302,11 @@ if __name__ == '__main__':
                              pq_object,
                              timerange)
 
-    # start PF calculation
-    network.lpf(snapshots)
+    # add coordinates to network nodes and make ready for map plotting
+    network = add_coordinates(network)
 
+    # start powerflow calculations
+    network.pf(snapshots)
 
     # close session
     session.close()

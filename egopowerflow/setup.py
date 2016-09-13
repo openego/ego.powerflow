@@ -8,5 +8,6 @@ setup(name='egopowerflow',
                         'pypsa >= 0.5'
                         'sqlalchemy',
                         'egoio',
-                        'oemof.db']
+                        'oemof.db',
+                        'geoalchemy2']
      )
