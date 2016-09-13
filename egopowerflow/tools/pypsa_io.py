@@ -6,7 +6,9 @@ from sqlalchemy import create_engine
 from datetime import datetime
 from pypsa import io
 from oemof import db
+from math import sqrt
 from geoalchemy2.shape import to_shape
+from matplotlib import pyplot as plt
 
 from egoio.db_tables.calc_ego_mv_powerflow import Bus, Line, Generator, Load, \
     Transformer, TempResolution, BusVMagSet, GeneratorPqSet, LoadPqSet
@@ -265,6 +267,42 @@ def add_coordinates(network):
         network.buses.loc[idx, 'y'] = wkt_geom.y
 
     return network
+
+
+def plot_line_loading(network, output='file'):
+    """
+    Plot line loading as color on lines
+
+    Displays line loading relative to nominal capacity
+    Parameters
+    ----------
+    network : PyPSA network container
+        Holds topology of grid including results from powerflow analysis
+    output : str
+        Specify 'file' (saves to disk, default) or 'show' (show directly)
+    """
+    # TODO: replace p0 by max(p0,p1) and analogously for q0
+    # TODO: implement for all given snapshots
+
+    # calculate relative line loading as S/S_nom
+    # with S = sqrt(P^2 + Q^2)
+    loading = ((network.lines_t.p0.loc[network.snapshots[1]] ** 2 +
+                network.lines_t.q0.loc[network.snapshots[1]] ** 2).apply(sqrt) \
+               / (network.lines.s_nom * 1e3)) * 100  # to MW as results from pf
+
+    # do the plotting
+    ll = network.plot(line_colors=abs(loading), line_cmap=plt.cm.jet,
+                      title="Line loading")
+
+    # add colorbar, note mappable sliced from ll by [1]
+    cb = plt.colorbar(ll[1])
+    cb.set_label('Line loading in %')
+    if output is 'show':
+        plt.show()
+    elif output is 'file':
+        plt.savefig('Line_loading.png')
+
+
 if __name__ == '__main__':
     session = oedb_session()
 
@@ -307,6 +345,10 @@ if __name__ == '__main__':
 
     # start powerflow calculations
     network.pf(snapshots)
+
+    # make a line loading plot
+    plot_line_loading(network, output='file')
+
 
     # close session
     session.close()

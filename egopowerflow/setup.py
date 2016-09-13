@@ -9,5 +9,6 @@ setup(name='egopowerflow',
                         'sqlalchemy',
                         'egoio',
                         'oemof.db',
-                        'geoalchemy2']
+                        'geoalchemy2',
+                        'matplotlib']
      )
