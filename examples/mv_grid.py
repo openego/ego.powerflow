@@ -4,6 +4,7 @@ from egopowerflow.tools.pypsa_io import oedb_session, get_pq_sets,\
 
 from egoio.db_tables.calc_ego_mv_powerflow import Bus, Line, Generator, Load, \
     Transformer, TempResolution, BusVMagSet, GeneratorPqSet, LoadPqSet
+from egoio.db_tables.calc_ego_mv_powerflow import TempResolution
 
 
 session = oedb_session()
@@ -26,7 +27,7 @@ bus_vmag_set = get_pq_sets(session, BusVMagSet, scenario, index_col='bus_id',
                            columns=['temp_id', 'v_mag_pu_set'])
 
 # define investigated time range
-timerange = get_timerange(session, temp_id_set)
+timerange = get_timerange(session, temp_id_set, TempResolution)
 
 # define relevant tables
 tables = [Bus, Line, Generator, Load, Transformer]

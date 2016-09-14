@@ -10,7 +10,6 @@ from math import sqrt
 from geoalchemy2.shape import to_shape
 from matplotlib import pyplot as plt
 
-from egoio.db_tables.calc_ego_mv_powerflow import TempResolution
 
 def oedb_session(section='oedb'):
     """Get SQLAlchemy session object with valid connection to OEDB"""
@@ -101,13 +100,15 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None,
     return pq_set
 
 
-def get_timerange(session, temp_id_set):
+def get_timerange(session, temp_id_set, TempResolution):
     """
     Parameters
     ----------
     session: SQLAlchemy session object
     temp_id_set : int
         ID of temporal coverage of power flow analysis
+    TempResolution: SQLAlchemy orm class
+        Table object of the table specifying temporal coverage of PFA
 
     Returns
     -------
