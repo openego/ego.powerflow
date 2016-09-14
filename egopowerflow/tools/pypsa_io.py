@@ -5,7 +5,6 @@ from sqlalchemy.orm import sessionmaker, load_only
 from sqlalchemy import create_engine
 from datetime import datetime
 from pypsa import io
-from oemof import db
 from math import sqrt
 from geoalchemy2.shape import to_shape
 from matplotlib import pyplot as plt
@@ -16,6 +15,7 @@ def oedb_session(section='oedb'):
 
     # get session object by oemof.db tools (requires .oemof/config.ini
     try:
+        from oemof import db
         conn = db.connection(section=section)
 
     except:
