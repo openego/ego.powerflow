@@ -106,6 +106,8 @@ def get_timerange(session, temp_id_set):
     Parameters
     ----------
     session: SQLAlchemy session object
+    temp_id_set : int
+        ID of temporal coverage of power flow analysis
 
     Returns
     -------
