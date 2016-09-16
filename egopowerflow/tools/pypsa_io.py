@@ -100,6 +100,7 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None,
     return pq_set
 
 
+def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
     """
     Parameters
     ----------
