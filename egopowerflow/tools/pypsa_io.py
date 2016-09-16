@@ -100,7 +100,6 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None,
     return pq_set
 
 
-def get_timerange(session, temp_id_set, TempResolution):
     """
     Parameters
     ----------
@@ -134,6 +133,7 @@ def get_timerange(session, temp_id_set, TempResolution):
     timerange = pd.DatetimeIndex(freq=frequency,
                                  periods=periods,
                                  start=start_date)
+    timerange = timerange[start_h-1:end_h]
 
     return timerange
 
@@ -212,12 +212,12 @@ def create_powerflow_problem(timerange, components):
 
     # initialize powerflow problem
     network, snapshots = init_pypsa_network(timerange)
-    network
+    
 
     # add components to network
     for component in components.keys():
         network.import_components_from_dataframe(components[component],
-                                                 component)
+                                                 str(component))
 
     # add timeseries data
 
