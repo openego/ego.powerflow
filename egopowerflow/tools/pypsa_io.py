@@ -218,7 +218,7 @@ def create_powerflow_problem(timerange, components):
     # add components to network
     for component in components.keys():
         network.import_components_from_dataframe(components[component],
-                                                 str(component))
+                                                 component)
 
     # add timeseries data
 
