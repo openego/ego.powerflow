@@ -10,23 +10,18 @@ session = oedb_session()
 scenario = 'Status Quo'
 
 # define relevant tables of generator table
-pq_set_cols = ['temp_id', 'p_set']
+pq_set_cols = ['p_set']
 
 
 # choose temp_id
 temp_id_set = 1
 start_h = 1
-end_h = 2
-
-# examplary call of pq-set retrieval
-gen_pq_set = get_pq_sets(session, GeneratorPqSet, scenario,
-                         index_col='generator_id', columns=pq_set_cols)
-load_pq_set = get_pq_sets(session, LoadPqSet, scenario, index_col='load_id',
-                          columns=pq_set_cols)
+end_h = 50
 
 
 # define investigated time range
-timerange = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
+timerange, slicer = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
+
 
 # define relevant tables
 tables = [Bus, Line, Generator, Load, Transformer]
@@ -43,13 +38,15 @@ network = import_pq_sets(session,
                          network,
                          pq_object,
                          timerange,
-                         scenario)
+                         scenario, 
+                         columns=pq_set_cols,                         
+                         slicer = slicer)
 
 # add coordinates to network nodes and make ready for map plotting
 network = add_coordinates(network)
 
 # start powerflow calculations
-network.pf(snapshots)
+network.lpf(snapshots)
 
 # make a line loading plot
 plot_line_loading(network, output='show')

@@ -83,10 +83,13 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None,
     pq_set: pandas DataFrame
         Table with pq-Values to be applied in PF analysis
     """
-
+    if slicer is not None:
+        start = int(slicer.split(':')[0])
+        end = int(slicer.split(':')[1])
+        
     # retrieve table
     if columns is not None:
-        pq_query = session.query(table).options(load_only(*columns)).\
+        pq_query = session.query(table).options(load_only(*columns[start:end])).\
             filter(table.scn_name==scenario)
     else:
         pq_query = session.query(table).filter(table.scn_name==scenario)
@@ -136,7 +139,9 @@ def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
                                  start=start_date)
     timerange = timerange[start_h-1:end_h]
 
-    return timerange
+    slicer = str(start_h) + ':' + str(end_h)
+    
+    return timerange, slicer
 
 
 def transform_timeseries4pypsa(timeseries, timerange, column=None):
@@ -225,7 +230,8 @@ def create_powerflow_problem(timerange, components):
     return network, snapshots
 
 
-def import_pq_sets(session, network, pq_tables, timerange, scenario):
+def import_pq_sets(session, network, pq_tables, timerange, scenario, 
+                   columns=None, slicer=None):
     """
     Import pq-set series to PyPSA network
 
@@ -238,6 +244,8 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario):
         PQ set values for each time step
     scenario : str
         Filter query by pq-sets for components of given scenario name
+    columns: list of strings
+        Columns to be selected from pq-sets table (default None)
 
     Returns
     -------
@@ -249,8 +257,8 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario):
         name = table.__table__.name.split('_')[0]
         index_col = name + '_id'
         component_name = name[:1].upper() + name[1:]
-        pq_set = get_pq_sets(session, table, scenario,
-                             index_col=index_col)
+        pq_set = get_pq_sets(session, table, scenario, columns,
+                             index_col=index_col, slicer=slicer)
         if not pq_set.empty:
             for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']
                         if x in pq_set.columns.values]:
