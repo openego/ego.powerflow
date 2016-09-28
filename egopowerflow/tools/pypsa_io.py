@@ -106,8 +106,10 @@ def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
         ID of temporal coverage of power flow analysis
     TempResolution: SQLAlchemy orm class
         Table object of the table specifying temporal coverage of PFA
-    slicer: list of int's
-        Slices array of time-dependent p/q-values to apply in PF (default None)
+    start_h: int
+        First hour of year used for calculations
+    end_h: int
+        Last hour of year used for calculations
     Returns
     -------
     timerange: Pandas DatetimeIndex
@@ -134,9 +136,7 @@ def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
                                  start=start_date)
     timerange = timerange[start_h-1:end_h]
 
-    slicer = [start_h,end_h]
-    
-    return timerange, slicer
+    return timerange
 
 
 def transform_timeseries4pypsa(timeseries, timerange, column=None):
@@ -227,7 +227,7 @@ def create_powerflow_problem(timerange, components):
 
 
 def import_pq_sets(session, network, pq_tables, timerange, scenario, 
-                   columns=None, slicer=[1,8760]):
+                   columns=None, start_h=1, end_h=8760):
     """
     Import pq-set series to PyPSA network
 
@@ -242,8 +242,11 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         Filter query by pq-sets for components of given scenario name
     columns: list of strings
         Columns to be selected from pq-sets table (default None)
-    slicer: list of int's
-        Slices array of time-dependent p/q-values to apply in PF (default None)
+    start_h: int
+        First hour of year used for calculations
+    end_h: int
+        Last hour of year used for calculations
+        
     Returns
     -------
     network: PyPSA powerflow problem object
@@ -261,8 +264,9 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
                         if x in pq_set.columns.values]:
                             
                 # remove unneeded part of timeseries
-                for idx in pq_set.index:
-                    pq_set[key][idx] = pq_set[key][idx][slicer[0]-1:slicer[1]]
+                if start_h != 1 or end_h != 8760:
+                    for idx in pq_set.index:
+                        pq_set[key][idx] = pq_set[key][idx][start_h-1:end_h]
                 
                 series = transform_timeseries4pypsa(pq_set,
                                                     timerange,
