@@ -60,8 +60,7 @@ def init_pypsa_network(time_range_lim):
     return network, snapshots
 
 
-def get_pq_sets(session, table, scenario, columns=None, index_col=None,
-                slicer=None):
+def get_pq_sets(session, table, scenario, columns=None, index_col=None):
     """
 
     Parameters
@@ -75,31 +74,26 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None,
         Columns to be selected from pq-sets table (default None)
     index_col: string
         Column to set index on (default None)
-    slicer: list of int's
-        Slices array of time-dependent p/q-values to apply in PF (default None)
 
     Returns
     -------
     pq_set: pandas DataFrame
         Table with pq-Values to be applied in PF analysis
     """
-    if slicer is not None:
-        start = int(slicer.split(':')[0])
-        end = int(slicer.split(':')[1])
-        
-    # retrieve table
+ 
+        # retrieve table
     if columns is not None:
-        pq_query = session.query(table).options(load_only(*columns[start:end])).\
+        pq_query = session.query(table).options(load_only(*columns)).\
             filter(table.scn_name==scenario)
     else:
         pq_query = session.query(table).filter(table.scn_name==scenario)
     pq_set = pd.read_sql_query(pq_query.statement,
                                session.bind,
                                index_col=index_col)
-
-    # slice relevant part by given slicer
-    #TODO: implement slicing of p,q-array
-
+    # remove unwanted columns                           
+    pq_set = pq_set.drop('temp_id',1)
+    pq_set = pq_set.drop('scn_name',1)
+    
     return pq_set
 
 
@@ -112,7 +106,8 @@ def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
         ID of temporal coverage of power flow analysis
     TempResolution: SQLAlchemy orm class
         Table object of the table specifying temporal coverage of PFA
-
+    slicer: list of int's
+        Slices array of time-dependent p/q-values to apply in PF (default None)
     Returns
     -------
     timerange: Pandas DatetimeIndex
@@ -139,7 +134,7 @@ def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
                                  start=start_date)
     timerange = timerange[start_h-1:end_h]
 
-    slicer = str(start_h) + ':' + str(end_h)
+    slicer = [start_h,end_h]
     
     return timerange, slicer
 
@@ -158,7 +153,8 @@ def transform_timeseries4pypsa(timeseries, timerange, column=None):
     pysa_timeseries: Pandas DataFrame
         Reformated pq-set timeseries
     """
-
+    timeseries.index = [str(i) for i in timeseries.index]
+    
     if column is None:
         pypsa_timeseries = timeseries.apply(
             pd.Series).transpose().set_index(timerange)
@@ -231,7 +227,7 @@ def create_powerflow_problem(timerange, components):
 
 
 def import_pq_sets(session, network, pq_tables, timerange, scenario, 
-                   columns=None, slicer=None):
+                   columns=None, slicer=[1,8760]):
     """
     Import pq-set series to PyPSA network
 
@@ -246,22 +242,28 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         Filter query by pq-sets for components of given scenario name
     columns: list of strings
         Columns to be selected from pq-sets table (default None)
-
+    slicer: list of int's
+        Slices array of time-dependent p/q-values to apply in PF (default None)
     Returns
     -------
     network: PyPSA powerflow problem object
         Altered network object
     """
-
+    
     for table in pq_tables:
         name = table.__table__.name.split('_')[0]
         index_col = name + '_id'
         component_name = name[:1].upper() + name[1:]
-        pq_set = get_pq_sets(session, table, scenario, columns,
-                             index_col=index_col, slicer=slicer)
+        pq_set = get_pq_sets(session, table, scenario, columns=columns,
+                             index_col=index_col)
         if not pq_set.empty:
             for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']
                         if x in pq_set.columns.values]:
+                            
+                # remove unneeded part of timeseries
+                for idx in pq_set.index:
+                    pq_set[key][idx] = pq_set[key][idx][slicer[0]-1:slicer[1]]
+                
                 series = transform_timeseries4pypsa(pq_set,
                                                     timerange,
                                                     column=key)
