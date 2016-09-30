@@ -1,6 +1,6 @@
 from tools.pypsa_io import oedb_session, get_pq_sets,\
     get_timerange, import_components, import_pq_sets, create_powerflow_problem,\
-    add_coordinates, plot_line_loading, add_source_types
+    add_coordinates, plot_line_loading, add_source_types, plot_stacked_gen
 
 from egoio.db_tables.calc_ego_hv_powerflow import Bus, Line, Generator, Load, \
     Transformer, TempResolution, GeneratorPqSet, LoadPqSet, Source
@@ -14,8 +14,8 @@ pq_set_cols = ['p_set']
 
 # choose temp_id
 temp_id_set = 1
-start_h = 1
-end_h = 2
+start_h = 500
+end_h = 800
 
 # define investigated time range
 timerange = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
@@ -44,14 +44,20 @@ network = import_pq_sets(session=session,
 # add coordinates to network nodes and make ready for map plotting
 network = add_coordinates(network)
 
-table = [Source]
-add_source_types(session, network, table)
+# add source names to generators
+add_source_types(session, network, table=Source)
 
 # start powerflow calculations
-network.lpf(snapshots)
+network.pf(snapshots)
 
 # make a line loading plot
 plot_line_loading(network, output='show')
+
+#plot stacked sum of nominal power for each generator type and timestep
+plot_stacked_gen(network)
+
+# same as before, limited to one specific bus
+plot_stacked_gen(network, bus='24560', resolution='MW')
 
 # close session
 session.close()

@@ -335,6 +335,7 @@ def plot_line_loading(network, output='file'):
     elif output is 'file':
         plt.savefig('Line_loading.png')
 
+
 def add_source_types(session, network, table):
     """
     Get source table from OEDB, change source_id to source name
@@ -351,13 +352,13 @@ def add_source_types(session, network, table):
     -------
     None 
     """
-    source = import_components(tables = table, 
+    source = import_components(tables = [table], 
                                session = session, 
                                scenario = None)['Source']
     source = source.drop('commentary',1)
     
     network.generators = network.generators.drop('carrier',1).\
-                        rename(columns={'source':'carrier'})
+                         rename(columns={'source':'carrier'})
     
     for idx, row in network.generators.iterrows():
         source_name = source.loc[row['carrier'],'name']
@@ -365,6 +366,71 @@ def add_source_types(session, network, table):
         
     source = source.set_index(keys = source.name.values).drop('name',1)
     network.import_components_from_dataframe(source, 'Carrier')
+    
+
+def plot_stacked_gen(network, bus=None, resolution='GW'):
+    """
+    Plot stacked sum of generation grouped by carrier type
+    
+    
+    Parameters
+    ----------
+    network : PyPSA network container
+    bus: string
+        Plot all generators at one specific bus. If none,
+        sum is calulated for all buses
+    resolution: string
+        Unit for y-axis. Can be either GW/MW/KW
+
+    Returns
+    -------
+    Plot 
+    """
+    if resolution == 'GW':
+        reso_int = 1e3
+    elif resolution == 'MW':
+        reso_int = 1
+    elif resolution == 'KW':
+        reso_int = 0.001
+        
+    # sum for all buses
+    if bus==None:    
+        p_by_carrier = network.generators_t.p.\
+                       groupby(network.generators.carrier, axis=1).sum()
+    # sum for a single bus 
+    elif bus is not None:
+        filtered_gens = network.generators[network.generators['bus'] == bus]
+        p_by_carrier = network.generators_t.p.\
+                       groupby(filtered_gens.carrier, axis=1).sum()
+        
+    colors = {'biomass':'green', 
+              'coal':'k', 
+              'gas':'orange',
+              'eeg_gas':'olive',
+              'geothermal':'purple', 
+              'lignite':'brown', 
+              'oil':'darkgrey',
+              'other_non_renewable':'pink', 
+              'reservoir':'navy', 
+              'run_of_river':'aqua',
+              'pumped_storage':'steelblue', 
+              'solar':'yellow', 
+              'uranium':'lime',
+              'waste':'sienna', 
+              'wind':'skyblue'}
+              
+#    TODO: column reordering based on available columns
+
+    fig,ax = plt.subplots(1,1)
+    
+    fig.set_size_inches(12,6)
+
+    (p_by_carrier/reso_int).plot(kind="area",ax=ax,linewidth=4,
+                            color=[colors[col] for col in p_by_carrier.columns])
+    ax.legend(ncol=4,loc="upper left")
+    
+    ax.set_ylabel(resolution)
+    ax.set_xlabel("")
     
     
 if __name__ == '__main__':
