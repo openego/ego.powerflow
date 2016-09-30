@@ -190,7 +190,10 @@ def import_components(tables, session, scenario):
             id_col = str(table.__name__).lower() + "_id"
         elif table.__name__ is 'Transformer':
             id_col = 'trafo_id'
-        query = session.query(table).filter(table.scn_name==scenario)
+        if table.__name__ is not 'Source':
+            query = session.query(table).filter(table.scn_name==scenario)
+        elif table.__name__ is 'Source':
+            query = session.query(table)            
         component_data[table.__name__] = pd.read_sql_query(
             query.statement, session.bind,
             index_col=id_col)
@@ -332,6 +335,37 @@ def plot_line_loading(network, output='file'):
     elif output is 'file':
         plt.savefig('Line_loading.png')
 
+def add_source_types(session, network, table):
+    """
+    Get source table from OEDB, change source_id to source name
+    
+    Parameters
+    ----------
+    session : SQLAlchemy session object
+        In this case it has to be a session connection to `OEDB`
+    network : PyPSA network container
+    tables: list of SQLAlchemy orm table object
+        Considered power system component tables
 
+    Returns
+    -------
+    None 
+    """
+    source = import_components(tables = table, 
+                               session = session, 
+                               scenario = None)['Source']
+    source = source.drop('commentary',1)
+    
+    network.generators = network.generators.drop('carrier',1).\
+                        rename(columns={'source':'carrier'})
+    
+    for idx, row in network.generators.iterrows():
+        source_name = source.loc[row['carrier'],'name']
+        network.generators.loc[idx, 'carrier'] = source_name
+        
+    source = source.set_index(keys = source.name.values).drop('name',1)
+    network.import_components_from_dataframe(source, 'Carrier')
+    
+    
 if __name__ == '__main__':
     pass

@@ -1,9 +1,9 @@
 from tools.pypsa_io import oedb_session, get_pq_sets,\
     get_timerange, import_components, import_pq_sets, create_powerflow_problem,\
-    add_coordinates, plot_line_loading
+    add_coordinates, plot_line_loading, add_source_types
 
 from egoio.db_tables.calc_ego_hv_powerflow import Bus, Line, Generator, Load, \
-    Transformer, TempResolution, GeneratorPqSet, LoadPqSet
+    Transformer, TempResolution, GeneratorPqSet, LoadPqSet, Source
 
 session = oedb_session()
 
@@ -43,6 +43,9 @@ network = import_pq_sets(session=session,
 
 # add coordinates to network nodes and make ready for map plotting
 network = add_coordinates(network)
+
+table = [Source]
+add_source_types(session, network, table)
 
 # start powerflow calculations
 network.lpf(snapshots)
