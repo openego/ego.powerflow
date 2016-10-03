@@ -420,7 +420,8 @@ def plot_stacked_gen(network, bus=None, resolution='GW'):
               'solar':'yellow', 
               'uranium':'lime',
               'waste':'sienna', 
-              'wind':'skyblue'}
+              'wind':'skyblue',
+              'unknown':'pink'}
               
 #    TODO: column reordering based on available columns
 
