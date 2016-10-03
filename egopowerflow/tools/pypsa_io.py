@@ -8,7 +8,7 @@ from pypsa import io
 from math import sqrt
 from geoalchemy2.shape import to_shape
 from matplotlib import pyplot as plt
-
+from numpy import isnan
 
 def oedb_session(section='oedb'):
     """Get SQLAlchemy session object with valid connection to OEDB"""
@@ -345,7 +345,7 @@ def add_source_types(session, network, table):
     session : SQLAlchemy session object
         In this case it has to be a session connection to `OEDB`
     network : PyPSA network container
-    tables: list of SQLAlchemy orm table object
+    table:  SQLAlchemy orm table object ("Source" table)
         Considered power system component tables
 
     Returns
@@ -361,9 +361,12 @@ def add_source_types(session, network, table):
                          rename(columns={'source':'carrier'})
     
     for idx, row in network.generators.iterrows():
-        source_name = source.loc[row['carrier'],'name']
-        network.generators.loc[idx, 'carrier'] = source_name
-        
+        if isnan(network.generators.loc[idx].carrier): 
+            network.generators.loc[idx, 'carrier'] = 'unknown'
+        else:
+            source_name = source.loc[row['carrier'],'name']
+            network.generators.loc[idx, 'carrier'] = source_name
+
     source = source.set_index(keys = source.name.values).drop('name',1)
     network.import_components_from_dataframe(source, 'Carrier')
     
