@@ -60,9 +60,9 @@ def init_pypsa_network(time_range_lim):
     return network, snapshots
 
 
-def get_pq_sets(session, table, scenario, columns=None, index_col=None):
+def get_pq_sets(session, table, scenario, start_h, end_h, column=None,\
+                index_col=None):
     """
-
     Parameters
     ----------
     session: SQLAlchemy sessino object
@@ -70,6 +70,10 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None):
         Specified pq-sets table
     scenario : str
         Name of chosen scenario
+    start_h: int
+        First hour of year used for calculations
+    end_h: int
+        Last hour of year used for calculations
     columns: list of strings
         Columns to be selected from pq-sets table (default None)
     index_col: string
@@ -80,20 +84,60 @@ def get_pq_sets(session, table, scenario, columns=None, index_col=None):
     pq_set: pandas DataFrame
         Table with pq-Values to be applied in PF analysis
     """
- 
-        # retrieve table
-    if columns is not None:
-        pq_query = session.query(table).options(load_only(*columns)).\
-            filter(table.scn_name==scenario)
-    else:
-        pq_query = session.query(table).filter(table.scn_name==scenario)
+    
+    if table.__name__ == 'GeneratorPqSet':
+        if column == 'p_set':
+            pq_query = session.query(table.generator_id, 
+                          table.p_set[start_h:end_h])
+        elif column == 'q_set':
+            pq_query = session.query(table.generator_id, 
+                          table.q_set[start_h:end_h])
+        elif column == 'p_min_pu':
+            pq_query = session.query(table.generator_id, 
+                          table.p_min_pu[start_h:end_h])
+        elif column == 'p_max_pu':
+            pq_query = session.query(table.generator_id, 
+                          table.p_max_pu[start_h:end_h]) 
+                          
+    elif table.__name__ == 'LoadPqSet':
+        if column == 'p_set':
+            pq_query = session.query(table.load_id, 
+                          table.p_set[start_h:end_h])
+        elif column == 'q_set':
+            pq_query = session.query(table.load_id, 
+                          table.q_set[start_h:end_h])
+                          
+    elif table.__name__ == 'BusVMagSet':
+        if column == 'v_mag_pu_set':
+            pq_query = session.query(table.bus_id, 
+                          table.v_mag_pu_set[start_h:end_h])
+    
+    elif table.__name__ == 'StoragePqSet':
+        if column == 'p_set':
+            pq_query = session.query(table.storage_id, 
+                          table.v_mag_pu_set[start_h:end_h])
+        elif column == 'q_set':
+            pq_query = session.query(table.storage_id, 
+                          table.q_set[start_h:end_h])
+        elif column == 'p_min_pu':
+            pq_query = session.query(table.storage_id, 
+                          table.p_min_pu[start_h:end_h])
+        elif column == 'p_max_pu':
+            pq_query = session.query(table.storage_id, 
+                          table.p_max_pu[start_h:end_h])
+        elif column == 'soc_set':
+            pq_query = session.query(table.storage_id, 
+                          table.soc_set[start_h:end_h])
+        elif column == 'inflow':
+            pq_query = session.query(table.storage_id, 
+                          table.inflow[start_h:end_h])
+                          
+    pq_query = pq_query.filter(table.scn_name==scenario)
     pq_set = pd.read_sql_query(pq_query.statement,
                                session.bind,
                                index_col=index_col)
-    # remove unwanted columns                           
-    pq_set = pq_set.drop('temp_id',1)
-    pq_set = pq_set.drop('scn_name',1)
-    
+
+    pq_set.columns = [column]
     return pq_set
 
 
@@ -260,24 +304,23 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         name = table.__table__.name.split('_')[0]
         index_col = name + '_id'
         component_name = name[:1].upper() + name[1:]
-        pq_set = get_pq_sets(session, table, scenario, columns=columns,
-                             index_col=index_col)
-        if not pq_set.empty:
-            for key in [x for x in ['p_set', 'q_set', 'v_mag_pu_set']
-                        if x in pq_set.columns.values]:
-                            
-                # remove unneeded part of timeseries
-                if start_h != 1 or end_h != 8760:
-                    for idx in pq_set.index:
-                        pq_set[key][idx] = pq_set[key][idx][start_h-1:end_h]
-                
-                series = transform_timeseries4pypsa(pq_set,
-                                                    timerange,
-                                                    column=key)
-                io.import_series_from_dataframe(network,
-                                                series,
-                                                component_name,
-                                                key)
+        
+        for column in columns:
+            pq_set = get_pq_sets(session,
+                                 table,
+                                 scenario,
+                                 column=column,
+                                 index_col=index_col,
+                                 start_h=start_h,
+                                 end_h=end_h)
+            
+            series = transform_timeseries4pypsa(pq_set,
+                                                timerange,
+                                                column=column)
+            io.import_series_from_dataframe(network,
+                                            series,
+                                            component_name,
+                                            column)
 
     return network
 
