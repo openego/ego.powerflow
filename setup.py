@@ -5,8 +5,10 @@ setup(name='egopowerflow',
       description='Powerflow analysis based on PyPSA',
       packages=find_packages(),
       install_requires=['pandas >= 0.17.0',
-                        'pypsa >= 0.5'
+                        'pypsa',
                         'sqlalchemy',
-                        'egoio',
-                        'oemof.db']
+                        # 'egoio', # comment til release of ego.io
+                        # 'oemof.db',
+                        'geoalchemy2',
+                        'matplotlib'] #to be installed manually
      )
