@@ -11,8 +11,8 @@ session = oedb_session()
 scenario = 'Status Quo'
 
 # define relevant tables of generator table
-pq_set_cols = ['p_set']
-
+pq_set_cols_1 = ['p_set']
+pq_set_cols_2 = ['q_set']
 # choose relevant parameters used in pf
 temp_id_set = 1
 start_h = 500
@@ -30,14 +30,24 @@ components = import_components(tables, session, scenario)
 # create PyPSA powerflow problem
 network, snapshots = create_powerflow_problem(timerange, components)
 
-# import pq-set tables to pypsa network
+# import pq-set tables to pypsa network (p_set for generators and loads)
 pq_object = [GeneratorPqSet, LoadPqSet]
 network = import_pq_sets(session=session,
                          network=network,
                          pq_tables=pq_object,
                          timerange=timerange,
                          scenario=scenario, 
-                         columns=pq_set_cols,                         
+                         columns=pq_set_cols_1,                         
+                         start_h=start_h,
+                         end_h=end_h)
+
+# import pq-set table to pypsa network (q_set for loads)
+network = import_pq_sets(session=session,
+                         network=network,
+                         pq_tables=[LoadPqSet],
+                         timerange=timerange,
+                         scenario=scenario, 
+                         columns=pq_set_cols_2,                         
                          start_h=start_h,
                          end_h=end_h)
 
