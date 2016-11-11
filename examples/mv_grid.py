@@ -1,13 +1,18 @@
-from egopowerflow.tools.pypsa_io import oedb_session, get_pq_sets,\
-    get_timerange, import_components, import_pq_sets, create_powerflow_problem,\
-    add_coordinates, plot_line_loading
+from egopowerflow.tools.tools import oedb_session
+session = oedb_session(section='oedb')
+# TODO: move oedb_session call below import statements
+# this is currently not possible because, for some stupid reason and unknown, session creation then fails
+
+from egopowerflow.tools.io import get_timerange, import_components, import_pq_sets,\
+    add_source_types, create_powerflow_problem, get_pq_sets
+from egopowerflow.tools.plot import add_coordinates, plot_line_loading
+
 
 from egoio.db_tables.calc_ego_mv_powerflow import Bus, Line, Generator, Load, \
     Transformer, TempResolution, BusVMagSet, GeneratorPqSet, LoadPqSet
 from egoio.db_tables.calc_ego_mv_powerflow import TempResolution
 
 
-session = oedb_session()
 
 scenario = 'Status Quo'
 
@@ -17,14 +22,6 @@ pq_set_cols = ['temp_id', 'p_set', 'q_set']
 
 # choose temp_id
 temp_id_set = 1
-
-# examplary call of pq-set retrieval
-gen_pq_set = get_pq_sets(session, GeneratorPqSet, scenario,
-                         index_col='generator_id', columns=pq_set_cols)
-load_pq_set = get_pq_sets(session, LoadPqSet, scenario, index_col='load_id',
-                          columns=pq_set_cols)
-bus_vmag_set = get_pq_sets(session, BusVMagSet, scenario, index_col='bus_id',
-                           columns=['temp_id', 'v_mag_pu_set'])
 
 # define investigated time range
 timerange = get_timerange(session, temp_id_set, TempResolution)
@@ -38,13 +35,36 @@ components = import_components(tables, session, scenario)
 # create PyPSA powerflow problem
 network, snapshots = create_powerflow_problem(timerange, components)
 
-# import pq-set tables to pypsa network
-pq_object = [GeneratorPqSet, LoadPqSet, BusVMagSet]
-network = import_pq_sets(session,
-                         network,
-                         pq_object,
-                         timerange,
-                         scenario)
+# import pq-set tables to pypsa network (p_set for generators and loads)
+pq_object = [GeneratorPqSet, LoadPqSet]
+network = import_pq_sets(session=session,
+                         network=network,
+                         pq_tables=pq_object,
+                         timerange=timerange,
+                         scenario=scenario,
+                         columns=['p_set'],
+                         start_h=0,
+                         end_h=2)
+
+# import pq-set table to pypsa network (q_set for loads)
+network = import_pq_sets(session=session,
+                         network=network,
+                         pq_tables=pq_object,
+                         timerange=timerange,
+                         scenario=scenario,
+                         columns=['q_set'],
+                         start_h=0,
+                         end_h=2)
+
+# Import `v_mag_pu_set` for Bus
+network = import_pq_sets(session=session,
+                         network=network,
+                         pq_tables=[BusVMagSet],
+                         timerange=timerange,
+                         scenario=scenario,
+                         columns=['v_mag_pu_set'],
+                         start_h=0,
+                         end_h=2)
 
 # add coordinates to network nodes and make ready for map plotting
 network = add_coordinates(network)
