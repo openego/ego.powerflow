@@ -4,6 +4,8 @@ import pandas as pd
 from pypsa import io
 from numpy import isnan
 
+from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
+
 
 def init_pypsa_network(time_range_lim):
     """
@@ -324,6 +326,56 @@ def add_source_types(session, network, table):
 
     source = source.set_index(keys = source.name.values).drop('name',1)
     network.import_components_from_dataframe(source, 'Carrier')
+
+
+def results_to_oedb(session, network):
+    """Return results obtained from PyPSA to oedb"""
+
+    # from oemof import db
+    # engine = db.engine(section='oedb')
+    # from egoio.db_tables import calc_ego_mv_powerflow
+    # calc_ego_mv_powerflow.Base.metadata.create_all(engine)
+
+    #TODO: make this more safe, at least inform the user about the deleting results
+    # empty all results table
+    session.query(ResBus).delete()
+    session.query(ResLine).delete()
+    session.query(ResTransformer).delete()
+    session.commit()
+
+    # insert voltage at buses to database
+    for col in network.buses_t.v_mag_pu:
+        res_bus = ResBus(
+            bus_id=col,
+            v_mag_pu=network.buses_t.v_mag_pu[col].tolist()
+        )
+        session.add(res_bus)
+    session.commit()
+
+    # insert active and reactive power of lines to database
+    for col in network.lines_t.p0:
+        res_line = ResLine(
+            line_id=col,
+            p0=network.lines_t.p0[col].tolist(),
+            q0=network.lines_t.q0[col].tolist(),
+            p1=network.lines_t.p1[col].tolist(),
+            q1=network.lines_t.q1[col].tolist()
+        )
+        session.add(res_line)
+    session.commit()
+
+    # insert active and reactive power of lines to database
+    for col in network.transformers_t.p0:
+        res_transformer = ResLine(
+            trafo_id=col,
+            p0=network.transformers_t.p0[col].tolist(),
+            q0=network.transformers_t.q0[col].tolist(),
+            p1=network.transformers_t.p1[col].tolist(),
+            q1=network.transformers_t.q1[col].tolist()
+        )
+        session.add(res_transformer)
+    session.commit()
+
     
 if __name__ == '__main__':
     pass

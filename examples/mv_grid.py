@@ -4,7 +4,7 @@ session = oedb_session(section='oedb')
 # this is currently not possible because, for some stupid reason and unknown, session creation then fails
 
 from egopowerflow.tools.io import get_timerange, import_components, import_pq_sets,\
-    add_source_types, create_powerflow_problem, get_pq_sets
+    add_source_types, create_powerflow_problem, get_pq_sets, results_to_oedb
 from egopowerflow.tools.plot import add_coordinates, plot_line_loading
 
 
@@ -18,7 +18,6 @@ scenario = 'Status Quo'
 
 # define relevant tables of generator table
 pq_set_cols = ['temp_id', 'p_set', 'q_set']
-
 
 # choose temp_id
 temp_id_set = 1
@@ -76,6 +75,7 @@ network.pf(snapshots)
 plot_line_loading(network, timestep=0, filename='Line_loading_load_case.png')
 plot_line_loading(network, timestep=1, filename='Line_loading_feed-in_case.png')
 
+results_to_oedb(session, network)
 
 # close session
 session.close()
