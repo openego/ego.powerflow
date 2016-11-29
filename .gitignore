@@ -1,5 +1,8 @@
-/.idea/ego.powerflow.iml
-/.idea/misc.xml
-/.idea/modules.xml
-/.idea/vcs.xml
-/.idea/workspace.xml
+# exclude pycharm file
+/.idea/*
+
+# exclude egg files
+/egopowerflow.egg-info/*
+
+# exclud .pyc files
+*.pyc
