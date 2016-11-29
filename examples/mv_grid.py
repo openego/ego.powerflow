@@ -73,7 +73,8 @@ network = add_coordinates(network)
 network.pf(snapshots)
 
 # make a line loading plot
-plot_line_loading(network, output='file')
+plot_line_loading(network, timestep=0, filename='Line_loading_load_case.png')
+plot_line_loading(network, timestep=1, filename='Line_loading_feed-in_case.png')
 
 
 # close session

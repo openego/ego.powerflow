@@ -22,7 +22,7 @@ def add_coordinates(network):
 
     return network
     
-def plot_line_loading(network, output='file'):
+def plot_line_loading(network, timestep=0, filename=None):
     """
     Plot line loading as color on lines
 
@@ -31,17 +31,18 @@ def plot_line_loading(network, output='file'):
     ----------
     network : PyPSA network container
         Holds topology of grid including results from powerflow analysis
-    output : str
-        Specify 'file' (saves to disk, default) or 'show' (show directly)
+    filename : str
+        Specify filename
+        If not given, figure will be show directly
     """
     # TODO: replace p0 by max(p0,p1) and analogously for q0
     # TODO: implement for all given snapshots
 
     # calculate relative line loading as S/S_nom
     # with S = sqrt(P^2 + Q^2)
-    loading = ((network.lines_t.p0.loc[network.snapshots[1]] ** 2 +
-                network.lines_t.q0.loc[network.snapshots[1]] ** 2).apply(sqrt) \
-               / (network.lines.s_nom * 1e3)) * 100  # to MW as results from pf
+    loading = ((network.lines_t.p0.loc[network.snapshots[timestep]] ** 2 +
+                network.lines_t.q0.loc[network.snapshots[timestep]] ** 2).apply(sqrt) \
+               / (network.lines.s_nom * 1e-3)) * 100  # to MW as results from pf
 
     # do the plotting
     ll = network.plot(line_colors=abs(loading), line_cmap=plt.cm.jet,
@@ -50,10 +51,12 @@ def plot_line_loading(network, output='file'):
     # add colorbar, note mappable sliced from ll by [1]
     cb = plt.colorbar(ll[1])
     cb.set_label('Line loading in %')
-    if output is 'show':
+    if filename is None:
         plt.show()
-    elif output is 'file':
-        plt.savefig('Line_loading.png')
+    else:
+        plt.savefig(filename)
+
+    plt.close()
         
 def plot_stacked_gen(network, bus=None, resolution='GW'):
     """
