@@ -42,7 +42,7 @@ def plot_line_loading(network, timestep=0, filename=None):
     # with S = sqrt(P^2 + Q^2)
     loading = ((network.lines_t.p0.loc[network.snapshots[timestep]] ** 2 +
                 network.lines_t.q0.loc[network.snapshots[timestep]] ** 2).apply(sqrt) \
-               / (network.lines.s_nom * 1e-3)) * 100  # to MW as results from pf
+               / (network.lines.s_nom)) * 100 
 
     # do the plotting
     ll = network.plot(line_colors=abs(loading), line_cmap=plt.cm.jet,
