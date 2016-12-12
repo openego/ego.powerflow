@@ -4,7 +4,7 @@ import pandas as pd
 from pypsa import io
 from numpy import isnan
 
-from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
+
 
 
 def init_pypsa_network(time_range_lim):
@@ -328,9 +328,15 @@ def add_source_types(session, network, table):
     network.import_components_from_dataframe(source, 'Carrier')
 
 
-def results_to_oedb(session, network):
+def results_to_oedb(session, network, grid='mv'):
     """Return results obtained from PyPSA to oedb"""
-
+    # moved this here to prevent error when not using the mv-schema
+    if grid.lower() == 'mv':
+        from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
+    elif grid.lower() == 'hv':
+        print('Not implemented: Result schema for HV missing')
+    else: 
+        print('Please enter mv or hv!')
     # from oemof import db
     # engine = db.engine(section='oedb')
     # from egoio.db_tables import calc_ego_mv_powerflow
