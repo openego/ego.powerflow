@@ -198,10 +198,12 @@ def import_components(tables, session, scenario):
     component_data = {}
 
     for table in tables:
-        if table.__name__ is not 'Transformer':
+        if table.__name__ not in ('Transformer','StorageUnit'):
             id_col = str(table.__name__).lower() + "_id"
         elif table.__name__ is 'Transformer':
             id_col = 'trafo_id'
+        elif table.__name__ is 'StorageUnit':
+            id_col = 'storage_id'
         if table.__name__ is not 'Source':
             query = session.query(table).filter(table.scn_name==scenario)
         elif table.__name__ is 'Source':
@@ -236,8 +238,10 @@ def create_powerflow_problem(timerange, components):
         network.import_components_from_dataframe(components[component],
                                                  component)
 
-    # add timeseries data
-
+    # fix names of certain columns for storage units
+    if 'StorageUnit' in components.keys():
+        fix_storages(network)
+        
     return network, snapshots
 
 
@@ -272,8 +276,12 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         name = table.__table__.name.split('_')[0]
         index_col = name + '_id'
         component_name = name[:1].upper() + name[1:]
-        
+        if table.__name__ is 'StorageUnit':
+            index_col = 'storage_id'
+            component_name = 'StorageUnit'
+            
         for column in columns:
+            
             pq_set = get_pq_sets(session,
                                  table,
                                  scenario,
@@ -285,6 +293,8 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
             series = transform_timeseries4pypsa(pq_set,
                                                 timerange,
                                                 column=column)
+            if column is 'soc_set':
+                column = 'state_of_charge_set'
             io.import_series_from_dataframe(network,
                                             series,
                                             component_name,
@@ -381,7 +391,27 @@ def results_to_oedb(session, network, grid='mv'):
         )
         session.add(res_transformer)
     session.commit()
-
+    
+    
+def fix_storages(network):
+    """
+    Workaround to deal with the new name for storages
+    used by PyPSA. 
+    Old: Storage
+    New: StorageUnit
+    
+    Parameters
+    ----------
+    network : PyPSA network container
+    
+    Returns
+    -------
+    None 
+    """
+    network.storage_units = network.storage_units.drop('state_of_charge_initial',1).\
+                     rename(columns={'soc_initial':'state_of_charge_initial'})    
+    network.storage_units = network.storage_units.drop('cyclic_state_of_charge',1).\
+                     rename(columns={'soc_cyclic':'cyclic_state_of_charge'})  
     
 if __name__ == '__main__':
     pass

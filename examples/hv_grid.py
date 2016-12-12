@@ -4,7 +4,7 @@ from egopowerflow.tools.io import get_timerange, import_components, import_pq_se
 from egopowerflow.tools.plot import add_coordinates, plot_line_loading,\
      plot_stacked_gen
 from egoio.db_tables.calc_ego_hv_powerflow import Bus, Line, Generator, Load, \
-    Transformer, TempResolution, GeneratorPqSet, LoadPqSet, Source
+    Transformer, TempResolution, GeneratorPqSet, LoadPqSet, Source, StorageUnit
 
 session = oedb_session()
 
@@ -16,13 +16,13 @@ pq_set_cols_2 = ['q_set']
 # choose relevant parameters used in pf
 temp_id_set = 1
 start_h = 500
-end_h = 800
+end_h = 501
 
 # define investigated time range
 timerange = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
 
 # define relevant tables
-tables = [Bus, Line, Generator, Load, Transformer]
+tables = [Bus, Line, Generator, Load, Transformer, StorageUnit]
 
 # get components from database tables
 components = import_components(tables, session, scenario)
