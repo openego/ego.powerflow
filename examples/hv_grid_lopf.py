@@ -3,8 +3,9 @@ from egopowerflow.tools.io import get_timerange, import_components, import_pq_se
     add_source_types, create_powerflow_problem
 from egopowerflow.tools.plot import add_coordinates, plot_line_loading,\
      plot_stacked_gen
-from egoio.db_tables.calc_ego_hv_powerflow import Bus, Line, Generator, Load, \
-    Transformer, TempResolution, GeneratorPqSet, LoadPqSet, Source
+from egoio.db_tables.calc_ego_hv_powerflow import Bus, Line, Generator, Load,\
+    Transformer, TempResolution, GeneratorPqSet, LoadPqSet, Source, StorageUnit,\
+    StoragePqSet
 
 session = oedb_session()
 
@@ -14,6 +15,7 @@ scenario = 'Status Quo'
 pq_set_cols_1 = ['p_set']
 pq_set_cols_2 = ['q_set']
 p_max_pu = ['p_max_pu']
+storage_sets = ['inflow'] # or: p_set, q_set, p_min_pu, p_max_pu, soc_set, inflow
 # choose relevant parameters used in pf
 temp_id_set = 1
 start_h = 500
@@ -59,7 +61,17 @@ network = import_pq_sets(session=session,
                          scenario=scenario, 
                          columns=p_max_pu,                         
                          start_h=start_h,
-                         end_h=end_h)                         
+                         end_h=end_h)   
+                      
+# import time data for storages:
+network = import_pq_sets(session=session,
+                         network=network,
+                         pq_tables=[StoragePqSet],
+                         timerange=timerange,
+                         scenario=scenario, 
+                         columns=storage_sets,                         
+                         start_h=start_h,
+                         end_h=end_h)
 
 # add coordinates to network nodes and make ready for map plotting
 network = add_coordinates(network)
