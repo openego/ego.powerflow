@@ -13,7 +13,7 @@ __author__ = "gplssm"
 
 from setuptools import find_packages, setup
 
-setup(name='egopowerflow',
+setup(name='ego.powerflow',
       author='openego development group',
       description='Powerflow analysis based on PyPSA',
       version='0.0.1',
