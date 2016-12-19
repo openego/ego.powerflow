@@ -22,7 +22,7 @@ setup(name='ego.powerflow',
       install_requires=['pandas >= 0.17.0, <=0.19.1',
                         'pypsa >= 0.6.2, <= 0.6.2',
                         'sqlalchemy >= 1.0.15, <= 1.1.4',
-                        'egoio <= 0.0.1, >= 0.0.1',
+                        'egoio <= 0.0.2, >= 0.0.2',
                         'oemof.db >=0.0.4, <=0.0.4',
                         'geoalchemy2 >= 0.3.0, <=0.3.0',
                         'matplotlib >= 1.5.3, <=1.5.3']
