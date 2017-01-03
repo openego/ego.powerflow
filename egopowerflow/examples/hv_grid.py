@@ -1,3 +1,16 @@
+"""This is the docstring for the example.py module.  Modules names should
+have short, all-lowercase names.  The module name may have underscores if
+this improves readability.
+Every module should have a docstring at the very top of the file.  The
+module's docstring may extend over multiple lines.  If your docstring does
+extend over multiple lines, the closing three quotation marks must be on
+a line by itself, preferably preceded by a blank line."""
+
+__copyright__ = "tba"
+__license__ = "tba"
+__author__ = "tba"
+
+
 from egopowerflow.tools.tools import oedb_session
 from egopowerflow.tools.io import get_timerange, import_components, import_pq_sets,\
     add_source_types, create_powerflow_problem
@@ -15,7 +28,6 @@ scenario = 'Status Quo'
 pq_set_cols_1 = ['p_set']
 pq_set_cols_2 = ['q_set']
 storage_sets = ['inflow'] # or: p_set, q_set, p_min_pu, p_max_pu, soc_set, inflow
-
 # choose relevant parameters used in pf
 temp_id_set = 1
 start_h = 500
@@ -25,6 +37,7 @@ end_h = 501
 timerange = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
 
 # define relevant tables
+
 tables = [Bus, Line, Generator, Load, Transformer, StorageUnit]
 
 # get components from database tables

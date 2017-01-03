@@ -1,3 +1,16 @@
+"""This is the docstring for the example.py module.  Modules names should
+have short, all-lowercase names.  The module name may have underscores if
+this improves readability.
+Every module should have a docstring at the very top of the file.  The
+module's docstring may extend over multiple lines.  If your docstring does
+extend over multiple lines, the closing three quotation marks must be on
+a line by itself, preferably preceded by a blank line."""
+
+__copyright__ = "tba"
+__license__ = "tba"
+__author__ = "tba"
+
+
 from math import sqrt
 from geoalchemy2.shape import to_shape
 from matplotlib import pyplot as plt
@@ -55,14 +68,13 @@ def plot_line_loading(network, timestep=0, filename=None):
         plt.show()
     else:
         plt.savefig(filename)
+        plt.close()
 
-    plt.close()
-        
 def plot_stacked_gen(network, bus=None, resolution='GW'):
     """
     Plot stacked sum of generation grouped by carrier type
-    
-    
+
+
     Parameters
     ----------
     network : PyPSA network container
