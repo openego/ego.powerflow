@@ -130,7 +130,7 @@ def plot_stacked_gen(network, bus=None, resolution='GW'):
     colors = [colors[col] for col in p_by_carrier.columns]
     if len(colors) == 1:
         colors = colors[0]
-    (p_by_carrier/reso_int).plot(kind="area",ax=ax,linewidth=4,
+    (p_by_carrier/reso_int).plot(kind="area",ax=ax,linewidth=0,
                             color=colors)
     ax.legend(ncol=4,loc="upper left")
     
