@@ -68,14 +68,13 @@ def plot_line_loading(network, timestep=0, filename=None):
         plt.show()
     else:
         plt.savefig(filename)
+        plt.close()
 
-    plt.close()
-        
 def plot_stacked_gen(network, bus=None, resolution='GW'):
     """
     Plot stacked sum of generation grouped by carrier type
-    
-    
+
+
     Parameters
     ----------
     network : PyPSA network container
