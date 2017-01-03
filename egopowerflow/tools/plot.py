@@ -55,7 +55,7 @@ def plot_line_loading(network, timestep=0, filename=None):
     # with S = sqrt(P^2 + Q^2)
     loading = ((network.lines_t.p0.loc[network.snapshots[timestep]] ** 2 +
                 network.lines_t.q0.loc[network.snapshots[timestep]] ** 2).apply(sqrt) \
-               / (network.lines.s_nom)) * 100 
+               / (network.lines.s_nom)) 
 
     # do the plotting
     ll = network.plot(line_colors=abs(loading), line_cmap=plt.cm.jet,
@@ -127,14 +127,15 @@ def plot_stacked_gen(network, bus=None, resolution='GW'):
     fig,ax = plt.subplots(1,1)
     
     fig.set_size_inches(12,6)
-
+    colors = [colors[col] for col in p_by_carrier.columns]
+    if len(colors) == 1:
+        colors = colors[0]
     (p_by_carrier/reso_int).plot(kind="area",ax=ax,linewidth=4,
-                            color=[colors[col] for col in p_by_carrier.columns])
+                            color=colors)
     ax.legend(ncol=4,loc="upper left")
     
     ax.set_ylabel(resolution)
     ax.set_xlabel("")
-    
-    
+
 if __name__ == '__main__':
     pass
