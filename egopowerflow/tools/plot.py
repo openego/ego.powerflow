@@ -55,7 +55,7 @@ def plot_line_loading(network, timestep=0, filename=None):
     # with S = sqrt(P^2 + Q^2)
     loading = ((network.lines_t.p0.loc[network.snapshots[timestep]] ** 2 +
                 network.lines_t.q0.loc[network.snapshots[timestep]] ** 2).apply(sqrt) \
-               / (network.lines.s_nom)) 
+               / (network.lines.s_nom))
 
     # do the plotting
     ll = network.plot(line_colors=abs(loading), line_cmap=plt.cm.jet,
@@ -69,6 +69,24 @@ def plot_line_loading(network, timestep=0, filename=None):
     else:
         plt.savefig(filename)
         plt.close()
+
+def plot_residual_load(network, bus=None):
+    """
+    """
+    if bus is None:
+        renewables = network.generators[
+                        network.generators.dispatch == 'variable']
+        renewables_t = network.generators.p_nom[renewables.index] * \
+                            network.generators_t.p_max_pu[renewables.index]
+        load = network.loads_t.p.sum(axis=1)
+        all_renew = renewables_t.sum(axis=1)
+        residual_load = load - all_renew
+        residual_load.plot(drawstyle='steps', lw=2, color='red')
+        # sorted curve
+        sorted_residual_load = residual_load.sort_values(
+                                    ascending=False).reset_index()
+        sorted_residual_load.plot(drawstyle='steps', lw=1.4, color='red')
+
 
 def plot_stacked_gen(network, bus=None, resolution='GW'):
     """
@@ -86,7 +104,7 @@ def plot_stacked_gen(network, bus=None, resolution='GW'):
 
     Returns
     -------
-    Plot 
+    Plot
     """
     if resolution == 'GW':
         reso_int = 1e3
@@ -94,46 +112,50 @@ def plot_stacked_gen(network, bus=None, resolution='GW'):
         reso_int = 1
     elif resolution == 'KW':
         reso_int = 0.001
-        
+
     # sum for all buses
-    if bus==None:    
+    if bus==None:
         p_by_carrier = network.generators_t.p.\
                        groupby(network.generators.carrier, axis=1).sum()
-    # sum for a single bus 
+        load = network.loads_t.p.sum(axis=1)
+    # sum for a single bus
     elif bus is not None:
         filtered_gens = network.generators[network.generators['bus'] == bus]
         p_by_carrier = network.generators_t.p.\
                        groupby(filtered_gens.carrier, axis=1).sum()
-        
-    colors = {'biomass':'green', 
-              'coal':'k', 
+        filtered_load = network.loads[network.loads['bus'] == bus]
+        load = network.loads_t.p[filtered_load.index]
+
+    colors = {'biomass':'green',
+              'coal':'k',
               'gas':'orange',
               'eeg_gas':'olive',
-              'geothermal':'purple', 
-              'lignite':'brown', 
+              'geothermal':'purple',
+              'lignite':'brown',
               'oil':'darkgrey',
-              'other_non_renewable':'pink', 
-              'reservoir':'navy', 
+              'other_non_renewable':'pink',
+              'reservoir':'navy',
               'run_of_river':'aqua',
-              'pumped_storage':'steelblue', 
-              'solar':'yellow', 
+              'pumped_storage':'steelblue',
+              'solar':'yellow',
               'uranium':'lime',
-              'waste':'sienna', 
+              'waste':'sienna',
               'wind':'skyblue',
               'unknown':'pink'}
-              
+
 #    TODO: column reordering based on available columns
 
     fig,ax = plt.subplots(1,1)
-    
+
     fig.set_size_inches(12,6)
     colors = [colors[col] for col in p_by_carrier.columns]
     if len(colors) == 1:
         colors = colors[0]
     (p_by_carrier/reso_int).plot(kind="area",ax=ax,linewidth=0,
                             color=colors)
+    load.plot(ax=ax, legend='load', lw=2, color='darkgray', style='--')
     ax.legend(ncol=4,loc="upper left")
-    
+
     ax.set_ylabel(resolution)
     ax.set_xlabel("")
 
