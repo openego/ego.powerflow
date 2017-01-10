@@ -175,7 +175,7 @@ def transform_timeseries4pypsa(timeseries, timerange, column=None):
 
     Returns
     -------
-    pysa_timeseries: Pandas DataFrame
+    pypsa_timeseries: Pandas DataFrame
         Reformated pq-set timeseries
     """
     timeseries.index = [str(i) for i in timeseries.index]
