@@ -34,7 +34,7 @@ def add_coordinates(network):
         network.buses.loc[idx, 'y'] = wkt_geom.y
 
     return network
-    
+
 def plot_line_loading(network, timestep=0, filename=None):
     """
     Plot line loading as color on lines
@@ -70,22 +70,26 @@ def plot_line_loading(network, timestep=0, filename=None):
         plt.savefig(filename)
         plt.close()
 
-def plot_residual_load(network, bus=None):
+def plot_residual_load(network):
+    """ Plots residual load summed of all exisiting buses.
+
+    Parameters
+    ----------
+    network : PyPSA network containter
     """
-    """
-    if bus is None:
-        renewables = network.generators[
-                        network.generators.dispatch == 'variable']
-        renewables_t = network.generators.p_nom[renewables.index] * \
-                            network.generators_t.p_max_pu[renewables.index]
-        load = network.loads_t.p.sum(axis=1)
-        all_renew = renewables_t.sum(axis=1)
-        residual_load = load - all_renew
-        residual_load.plot(drawstyle='steps', lw=2, color='red')
-        # sorted curve
-        sorted_residual_load = residual_load.sort_values(
-                                    ascending=False).reset_index()
-        sorted_residual_load.plot(drawstyle='steps', lw=1.4, color='red')
+
+    renewables = network.generators[
+                    network.generators.dispatch == 'variable']
+    renewables_t = network.generators.p_nom[renewables.index] * \
+                        network.generators_t.p_max_pu[renewables.index]
+    load = network.loads_t.p.sum(axis=1)
+    all_renew = renewables_t.sum(axis=1)
+    residual_load = load - all_renew
+    residual_load.plot(drawstyle='steps', lw=2, color='red')
+    # sorted curve
+    sorted_residual_load = residual_load.sort_values(
+                                ascending=False).reset_index()
+    sorted_residual_load.plot(drawstyle='steps', lw=1.4, color='red')
 
 
 def plot_stacked_gen(network, bus=None, resolution='GW'):
