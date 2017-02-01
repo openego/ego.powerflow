@@ -31,7 +31,7 @@ storage_sets = ['inflow'] # or: p_set, q_set, p_min_pu, p_max_pu, soc_set, inflo
 # choose relevant parameters used in pf
 temp_id_set = 1
 start_h = 500
-end_h = 501
+end_h = 800
 
 # define investigated time range
 timerange = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
@@ -87,7 +87,7 @@ add_source_types(session, network, table=Source)
 network.pf(snapshots)
 
 # make a line loading plot
-plot_line_loading(network, output='show')
+plot_line_loading(network)
 
 #plot stacked sum of nominal power for each generator type and timestep
 plot_stacked_gen(network)
