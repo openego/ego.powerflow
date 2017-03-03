@@ -66,7 +66,7 @@ def get_pq_sets(session, table, scenario, start_h, end_h, column=None,\
         Table with pq-Values to be applied in PF analysis
     """
     
-    if table.__name__ == 'GeneratorPqSet':
+    if table.__name__ == 'EgoGridPfHvGeneratorPqSet':
         if column == 'p_set':
             pq_query = session.query(table.generator_id, 
                           table.p_set[start_h:end_h])
