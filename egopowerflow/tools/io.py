@@ -80,7 +80,7 @@ def get_pq_sets(session, table, scenario, start_h, end_h, column=None,\
             pq_query = session.query(table.generator_id, 
                           table.p_max_pu[start_h:end_h]) 
                           
-    elif table.__name__ == 'LoadPqSet':
+    elif table.__name__ == 'EgoGridPfHvLoadPqSet':
         if column == 'p_set':
             pq_query = session.query(table.load_id, 
                           table.p_set[start_h:end_h])
@@ -88,12 +88,12 @@ def get_pq_sets(session, table, scenario, start_h, end_h, column=None,\
             pq_query = session.query(table.load_id, 
                           table.q_set[start_h:end_h])
                           
-    elif table.__name__ == 'BusVMagSet':
+    elif table.__name__ == 'EgoGridPfMvBusVMagSet':
         if column == 'v_mag_pu_set':
             pq_query = session.query(table.bus_id, 
                           table.v_mag_pu_set[start_h:end_h])
     
-    elif table.__name__ == 'StoragePqSet':
+    elif table.__name__ == 'EgoGridPfHvStoragePqSet':
         if column == 'p_set':
             pq_query = session.query(table.storage_id, 
                           table.v_mag_pu_set[start_h:end_h])
@@ -211,15 +211,15 @@ def import_components(tables, session, scenario):
     component_data = {}
 
     for table in tables:
-        if table.__name__ not in ('Transformer','StorageUnit'):
+        if table.__name__ not in ('EgoGridPfHvTransformer','EgoGridPfHvStorage'):
             id_col = str(table.__name__).lower() + "_id"
-        elif table.__name__ is 'Transformer':
+        elif table.__name__ is 'EgoGridPfHvTransformer':
             id_col = 'trafo_id'
-        elif table.__name__ is 'StorageUnit':
+        elif table.__name__ is 'EgoGridPfHvStorage':
             id_col = 'storage_id'
-        if table.__name__ is not 'Source':
+        if table.__name__ is not 'EgoGridPfMvSource':
             query = session.query(table).filter(table.scn_name==scenario)
-        elif table.__name__ is 'Source':
+        elif table.__name__ is 'EgoGridPfMvSource':
             query = session.query(table)            
         component_data[table.__name__] = pd.read_sql_query(
             query.statement, session.bind,
@@ -252,7 +252,7 @@ def create_powerflow_problem(timerange, components):
                                                  component)
 
     # fix names of certain columns for storage units
-    if 'StorageUnit' in components.keys():
+    if 'EgoGridPfHvStorage' in components.keys():
         fix_storages(network)
         
     return network, snapshots
@@ -289,9 +289,9 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         name = table.__table__.name.split('_')[0]
         index_col = name + '_id'
         component_name = name[:1].upper() + name[1:]
-        if table.__name__ is 'StorageUnit':
+        if table.__name__ is 'EgoGridPfHvStorage':
             index_col = 'storage_id'
-            component_name = 'StorageUnit'
+            component_name = 'EgoGridPfHvStorage'
             
         for column in columns:
             
@@ -334,7 +334,7 @@ def add_source_types(session, network, table):
     """
     source = import_components(tables = [table], 
                                session = session, 
-                               scenario = None)['Source']
+                               scenario = None)['EgoGridPfMvSource']
     source = source.drop('commentary',1)
     
     network.generators = network.generators.drop('carrier',1).\
