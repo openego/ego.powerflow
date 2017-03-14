@@ -21,6 +21,8 @@ from egoio.db_tables.model_draft import EgoGridPfHvBu as Bus, EgoGridPfHvLine as
     EgoGridPfHvLoadPqSet as LoadPqSet, EgoGridPfHvSource as Source #, EgoGridPfHvStorage,\
 #    EgoGridPfHvStoragePqSet
 
+import time
+
 session = oedb_session()
 
 scenario = 'Status Quo'
@@ -33,8 +35,8 @@ p_max_pu = ['p_max_pu']
 
 # choose relevant parameters used in pf
 temp_id_set = 1
-start_h = 500
-end_h = 502
+start_h = 2286
+end_h = 2301
 
 # define investigated time range
 timerange = get_timerange(session, temp_id_set, TempResolution, start_h, end_h)
@@ -94,12 +96,15 @@ network = add_coordinates(network)
 # add source names to generators
 add_source_types(session, network, table=Source)
 
-network.lines.s_nom = network.lines.s_nom*3
-network.transformers.s_nom = network.transformers.s_nom*3
+network.lines.s_nom = network.lines.s_nom*1.5
+network.transformers.s_nom = network.transformers.s_nom*1.5
 
 # start powerflow calculations
+x=time.time()
 network.lopf(snapshots)
-network.model.write('file.lp', io_options={'symbolic_labels':True})
+y=time.time()
+z=(y-x)/60
+network.model.write('/home/ulf/file.lp', io_options={'symbolic_solver_labels':True})
 
 # make a line loading plot
 plot_line_loading(network)
