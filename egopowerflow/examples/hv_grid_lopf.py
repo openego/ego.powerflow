@@ -16,7 +16,7 @@ from egopowerflow.tools.io import get_timerange, import_components, import_pq_se
     add_source_types, create_powerflow_problem
 from egopowerflow.tools.plot import add_coordinates, plot_line_loading,\
      plot_stacked_gen
-from egoio.db_tables.model_draft import EgoGridPfHvBu as Bus, EgoGridPfHvLine as Line, EgoGridPfHvGenerator as Generator, EgoGridPfHvLoad as Load,\
+from egoio.db_tables.model_draft import EgoGridPfHvBus as Bus, EgoGridPfHvLine as Line, EgoGridPfHvGenerator as Generator, EgoGridPfHvLoad as Load,\
     EgoGridPfHvTransformer as Transformer, EgoGridPfHvTempResolution as TempResolution, EgoGridPfHvGeneratorPqSet as GeneratorPqSet,\
     EgoGridPfHvLoadPqSet as LoadPqSet, EgoGridPfHvSource as Source #, EgoGridPfHvStorage,\
 #    EgoGridPfHvStoragePqSet
