@@ -208,39 +208,29 @@ def import_components(tables, session, scenario):
     components: dict
 
     """
+
     component_data = {}
 
     for table in tables:
-        if table.__name__ not in ('EgoGridPfHvTransformer','EgoGridPfHvStorage',\
-        'EgoGridPfHvBu', 'EgoGridPfHvLine', 'EgoGridPfHvGenerator', 'EgoGridPfHvLoad', 'EgoGridPfHvSource'):
-            id_col = str(table.__name__).lower() + "_id"
-        elif table.__name__ is 'EgoGridPfHvTransformer':
-            id_col = 'trafo_id'
-        elif table.__name__ is 'EgoGridPfHvStorage':
-            id_col = 'storage_id'
-        elif table.__name__ is 'EgoGridPfHvBu':
-            id_col = 'bus_id'
-        elif table.__name__ is 'EgoGridPfHvLine':
-            id_col = 'line_id'
-        elif table.__name__ is 'EgoGridPfHvGenerator':
-            id_col = 'generator_id'
-        elif table.__name__ is 'EgoGridPfHvLoad':
-            id_col = 'load_id'     
-        elif table.__name__ is 'EgoGridPfHvSource':
-            id_col = 'source_id'                
+
+        name = table.__name__.split('Hv')[-1]
+        id_col = name.lower() + '_id'
+
+        if id_col == 'transformer_id':
+             id_col = 'trafo_id'
+
         if table.__name__ is not 'EgoGridPfHvSource':
             query = session.query(table).filter(table.scn_name==scenario)
+
         elif table.__name__ is 'EgoGridPfHvSource':
-            query = session.query(table)            
-        component_data[table.__name__] = pd.read_sql_query(
+            query = session.query(table)
+
+        component_data[name] = pd.read_sql_query(
             query.statement, session.bind,
             index_col=id_col)
-    names={'EgoGridPfHvTransformer':'Transformer',
-    'EgoGridPfHvStorage':'StorageUnit','EgoGridPfHvBu':'Bus', 
-    'EgoGridPfHvLine':'Line', 'EgoGridPfHvGenerator':'Generator', 
-    'EgoGridPfHvLoad':'Load', 'EgoGridPfHvSource':'Source'}
-    component_data={names.get(k):v for k,v in component_data.items()}
+
     return component_data
+
 
 def create_powerflow_problem(timerange, components):
     """
