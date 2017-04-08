@@ -16,8 +16,8 @@ import pandas as pd
 
 from pypsa import io
 from numpy import isnan
-
-
+from collections import OrderedDict
+from sqlalchemy.inspection import inspect
 
 
 def init_pypsa_network(time_range_lim):
@@ -39,87 +39,6 @@ def init_pypsa_network(time_range_lim):
     snapshots = network.snapshots
 
     return network, snapshots
-
-
-def get_pq_sets(session, table, scenario, start_h, end_h, column=None,\
-                index_col=None):
-    """
-    Parameters
-    ----------
-    session: SQLAlchemy sessino object
-    table: SQLAlchemy orm table object
-        Specified pq-sets table
-    scenario : str
-        Name of chosen scenario
-    start_h: int
-        First hour of year used for calculations
-    end_h: int
-        Last hour of year used for calculations
-    columns: list of strings
-        Columns to be selected from pq-sets table (default None)
-    index_col: string
-        Column to set index on (default None)
-
-    Returns
-    -------
-    pq_set: pandas DataFrame
-        Table with pq-Values to be applied in PF analysis
-    """
-    
-    if table.__name__ == 'EgoGridPfHvGeneratorPqSet':
-        if column == 'p_set':
-            pq_query = session.query(table.generator_id, 
-                          table.p_set[start_h:end_h])
-        elif column == 'q_set':
-            pq_query = session.query(table.generator_id, 
-                          table.q_set[start_h:end_h])
-        elif column == 'p_min_pu':
-            pq_query = session.query(table.generator_id, 
-                          table.p_min_pu[start_h:end_h])
-        elif column == 'p_max_pu':
-            pq_query = session.query(table.generator_id, 
-                          table.p_max_pu[start_h:end_h]) 
-                          
-    elif table.__name__ == 'EgoGridPfHvLoadPqSet':
-        if column == 'p_set':
-            pq_query = session.query(table.load_id, 
-                          table.p_set[start_h:end_h])
-        elif column == 'q_set':
-            pq_query = session.query(table.load_id, 
-                          table.q_set[start_h:end_h])
-                          
-    elif table.__name__ == 'EgoGridPfMvBusVMagSet':
-        if column == 'v_mag_pu_set':
-            pq_query = session.query(table.bus_id, 
-                          table.v_mag_pu_set[start_h:end_h])
-    
-    elif table.__name__ == 'EgoGridPfHvStoragePqSet':
-        if column == 'p_set':
-            pq_query = session.query(table.storage_id, 
-                          table.v_mag_pu_set[start_h:end_h])
-        elif column == 'q_set':
-            pq_query = session.query(table.storage_id, 
-                          table.q_set[start_h:end_h])
-        elif column == 'p_min_pu':
-            pq_query = session.query(table.storage_id, 
-                          table.p_min_pu[start_h:end_h])
-        elif column == 'p_max_pu':
-            pq_query = session.query(table.storage_id, 
-                          table.p_max_pu[start_h:end_h])
-        elif column == 'soc_set':
-            pq_query = session.query(table.storage_id, 
-                          table.soc_set[start_h:end_h])
-        elif column == 'inflow':
-            pq_query = session.query(table.storage_id, 
-                          table.inflow[start_h:end_h])
-                          
-    pq_query = pq_query.filter(table.scn_name==scenario)
-    pq_set = pd.read_sql_query(pq_query.statement,
-                               session.bind,
-                               index_col=index_col)
-
-    pq_set.columns = [column]
-    return pq_set
 
 
 def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
@@ -179,7 +98,7 @@ def transform_timeseries4pypsa(timeseries, timerange, column=None):
         Reformated pq-set timeseries
     """
     timeseries.index = [str(i) for i in timeseries.index]
-    
+
     if column is None:
         pypsa_timeseries = timeseries.apply(
             pd.Series).transpose().set_index(timerange)
@@ -209,18 +128,15 @@ def import_components(tables, session, scenario):
 
     """
 
-    component_data = {}
+    component_data = OrderedDict()
 
     for table in tables:
 
         name = table.__name__.split('Hv')[-1]
         id_col = name.lower() + '_id'
 
-        if id_col == 'transformer_id':
-             id_col = 'trafo_id'
-
         if table.__name__ is not 'EgoGridPfHvSource':
-            query = session.query(table).filter(table.scn_name==scenario)
+            query = session.query(table).filter(table.scn_name == scenario)
 
         elif table.__name__ is 'EgoGridPfHvSource':
             query = session.query(table)
@@ -249,7 +165,6 @@ def create_powerflow_problem(timerange, components):
 
     # initialize powerflow problem
     network, snapshots = init_pypsa_network(timerange)
-    
 
     # add components to network
     for component in components.keys():
@@ -259,11 +174,55 @@ def create_powerflow_problem(timerange, components):
     # fix names of certain columns for storage units
     if 'EgoGridPfHvStorage' in components.keys():
         fix_storages(network)
-        
+
     return network, snapshots
 
 
-def import_pq_sets(session, network, pq_tables, timerange, scenario, 
+def get_pq_sets(session, table, scenario, start_h, end_h, column=None,
+                index_col=None):
+    """
+    Parameters
+    ----------
+    session: SQLAlchemy sessino object
+    table: SQLAlchemy orm table object
+        Specified pq-sets table
+    scenario : str
+        Name of chosen scenario
+    start_h: int
+        First hour of year used for calculations
+    end_h: int
+        Last hour of year used for calculations
+    columns: list of strings
+        Columns to be selected from pq-sets table (default None)
+    index_col: string
+        Column to set index on (default None)
+
+    Returns
+    -------
+    pq_set: pandas DataFrame
+        Table with pq-Values to be applied in PF analysis
+    """
+
+    id_column = inspect(table).primary_key[1].name
+
+    try:
+        assert 'id' in id_column
+    except AssertionError:
+        print('There is no id column in %s', table)
+
+    query = session.query(getattr(table, id_column),
+                          getattr(table, column)[start_h:end_h])
+    query = query.filter(table.scn_name == scenario)
+
+    pq_set = pd.read_sql(query.statement,
+                         session.bind,
+                         index_col=index_col)
+
+    pq_set.columns = [column]
+    return pq_set
+
+
+def import_pq_sets(session, network, pq_tables, timerange, scenario,
                    columns=None, start_h=1, end_h=8760):
     """
     Import pq-set series to PyPSA network
@@ -283,13 +242,13 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         First hour of year used for calculations
     end_h: int
         Last hour of year used for calculations
-        
+
     Returns
     -------
     network: PyPSA powerflow problem object
         Altered network object
     """
-    
+
     for table in pq_tables:
         name = table.__table__.name.split('_')[4]
         index_col = name + '_id'
@@ -297,9 +256,9 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         if table.__name__ is 'EgoGridPfHvStorage':
             index_col = 'storage_id'
             component_name = 'EgoGridPfHvStorage'
-            
+
         for column in columns:
-            
+
             pq_set = get_pq_sets(session,
                                  table,
                                  scenario,
@@ -307,7 +266,7 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
                                  index_col=index_col,
                                  start_h=start_h,
                                  end_h=end_h)
-            
+
             series = transform_timeseries4pypsa(pq_set,
                                                 timerange,
                                                 column=column)
@@ -324,7 +283,7 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
 def add_source_types(session, network, table):
     """
     Get source table from OEDB, change source_id to source name
-    
+
     Parameters
     ----------
     session : SQLAlchemy session object
@@ -335,24 +294,35 @@ def add_source_types(session, network, table):
 
     Returns
     -------
-    None 
+    None
     """
-    source = import_components(tables = [table], 
-                               session = session, 
-                               scenario = None)['Source']
-    source = source.drop('commentary',1)
-    
-    network.generators = network.generators.drop('carrier',1).\
-                         rename(columns={'source':'carrier'})
-    
-    for idx, row in network.generators.iterrows():
-        if isnan(network.generators.loc[idx].carrier): 
-            network.generators.loc[idx, 'carrier'] = 'unknown'
-        else:
-            source_name = source.loc[row['carrier'],'name']
-            network.generators.loc[idx, 'carrier'] = source_name
 
-    source = source.set_index(keys = source.name.values).drop('name',1)
+    source = import_components(tables=[table],
+                               session=session,
+                               scenario=None)['Source']
+    source = source.drop('commentary', 1)
+
+    carrier = network.generators.carrier.astype('int')
+
+    carrier = carrier.map(source.name)
+
+    carrier.fillna('unknown', inplace=True)
+
+    network.generators.carrier = carrier
+
+#     network.generators = network.generators.drop('carrier',1).\
+#                          rename(columns={'source':'carrier'})
+#
+#
+#     for idx, row in network.generators.iterrows():
+#         if isnan(network.generators.loc[idx].carrier):
+#             network.generators.loc[idx, 'carrier'] = 'unknown'
+#         else:
+#             source_name = source.loc[row['carrier'],'name']
+#             network.generators.loc[idx, 'carrier'] = source_name
+#
+    source = source.set_index(keys=source.name.values).drop('name',1)
+
     network.import_components_from_dataframe(source, 'Carrier')
 
 
@@ -363,7 +333,7 @@ def results_to_oedb(session, network, grid='mv'):
         from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
     elif grid.lower() == 'hv':
         print('Not implemented: Result schema for HV missing')
-    else: 
+    else:
         print('Please enter mv or hv!')
     # from oemof import db
     # engine = db.engine(section='oedb')
@@ -409,27 +379,27 @@ def results_to_oedb(session, network, grid='mv'):
         )
         session.add(res_transformer)
     session.commit()
-    
-    
+
+
 def fix_storages(network):
     """
     Workaround to deal with the new name for storages
-    used by PyPSA. 
+    used by PyPSA.
     Old: Storage
     New: StorageUnit
-    
+
     Parameters
     ----------
     network : PyPSA network container
-    
+
     Returns
     -------
-    None 
+    None
     """
     network.storage_units = network.storage_units.drop('state_of_charge_initial',1).\
-                     rename(columns={'soc_initial':'state_of_charge_initial'})    
+                     rename(columns={'soc_initial':'state_of_charge_initial'})
     network.storage_units = network.storage_units.drop('cyclic_state_of_charge',1).\
-                     rename(columns={'soc_cyclic':'cyclic_state_of_charge'})  
-    
+                     rename(columns={'soc_cyclic':'cyclic_state_of_charge'})
+
 if __name__ == '__main__':
     pass
