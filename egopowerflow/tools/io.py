@@ -141,6 +141,9 @@ def import_components(tables, session, scenario):
         elif table.__name__ is 'EgoGridPfHvSource':
             query = session.query(table)
 
+        if table.__name__ is 'EgoGridPfHvStorage':
+            name = 'StorageUnit'
+
         component_data[name] = pd.read_sql_query(
             query.statement, session.bind,
             index_col=id_col)
@@ -255,7 +258,7 @@ def import_pq_sets(session, network, pq_tables, timerange, scenario,
         component_name = name[:1].upper() + name[1:]
         if table.__name__ is 'EgoGridPfHvStorage':
             index_col = 'storage_id'
-            component_name = 'EgoGridPfHvStorage'
+            component_name = 'StorageUnit'
 
         for column in columns:
 
