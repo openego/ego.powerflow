@@ -93,7 +93,7 @@ def plot_residual_load(network):
     sorted_residual_load.plot(drawstyle='steps', lw=1.4, color='red')
 
 
-def plot_stacked_gen(network, bus=None, resolution='GW'):
+def plot_stacked_gen(network, bus=None, resolution='GW', filename=None):
     """
     Plot stacked sum of generation grouped by carrier type
     
@@ -168,6 +168,12 @@ def plot_stacked_gen(network, bus=None, resolution='GW'):
     ax.set_ylabel(resolution)
     ax.set_xlabel("")
     
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        plt.close()
+
     
 if __name__ == '__main__':
     pass
