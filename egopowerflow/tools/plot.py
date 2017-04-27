@@ -54,9 +54,14 @@ def plot_line_loading(network, timestep=0, filename=None):
 
     # calculate relative line loading as S/S_nom
     # with S = sqrt(P^2 + Q^2)
-    loading = ((network.lines_t.p0.loc[network.snapshots[timestep]] ** 2 +
-                network.lines_t.q0.loc[network.snapshots[timestep]] ** 2).apply(sqrt) \
-               / (network.lines.s_nom)) * 100 
+
+    if network.lines_t.q0.empty:
+         loading = abs((network.lines_t.p0.loc[network.snapshots[timestep]]/ \
+                   (network.lines.s_nom)) * 100 )
+    else:
+         loading = ((network.lines_t.p0.loc[network.snapshots[timestep]] ** 2 +
+                   network.lines_t.q0.loc[network.snapshots[timestep]] ** 2).\
+                   apply(sqrt) / (network.lines.s_nom)) * 100 
 
     # do the plotting
     ll = network.plot(line_colors=abs(loading), line_cmap=plt.cm.jet,
