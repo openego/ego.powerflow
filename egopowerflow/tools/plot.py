@@ -179,6 +179,36 @@ def plot_stacked_gen(network, bus=None, resolution='GW', filename=None):
         plt.savefig(filename)
         plt.close()
 
+def curtailment(network, carrier='wind', filename=None):
+    
+    p_by_carrier = network.generators_t.p.groupby(network.generators.carrier, axis=1).sum()
+    capacity = network.generators.groupby("carrier").sum().at[carrier,"p_nom"]
+    p_available = network.generators_t.p_max_pu.multiply(network.generators["p_nom"])
+    p_available_by_carrier =p_available.groupby(network.generators.carrier, axis=1).sum()
+    p_curtailed_by_carrier = p_available_by_carrier - p_by_carrier
+    p_df = pd.DataFrame({carrier + " available" : p_available_by_carrier[carrier],
+                         carrier + " dispatched" : p_by_carrier[carrier],
+                         carrier + " curtailed" : p_curtailed_by_carrier[carrier]})
+    
+    p_df[carrier + " capacity"] = capacity
+    p_df[carrier + " curtailed"][p_df[carrier + " curtailed"] < 0.] = 0.
+    
+    
+    fig,ax = plt.subplots(1,1)
+    fig.set_size_inches(12,6)
+    p_df[[carrier + " dispatched",carrier + " curtailed"]].plot(kind="area",ax=ax,linewidth=3)
+    p_df[[carrier + " available",carrier + " capacity"]].plot(ax=ax,linewidth=3)
+    
+    ax.set_xlabel("")
+    ax.set_ylabel("Power [MW]")
+    ax.set_ylim([0,capacity*1.1])
+    ax.legend()
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        plt.close()
+
     
 if __name__ == '__main__':
     pass
