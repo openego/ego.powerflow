@@ -1,4 +1,10 @@
 """ DB wrapper for PyPSA...wip
+
+Attributes
+----------
+
+packagename: str
+    ...
 """
 
 __copyright__ = ""
@@ -25,12 +31,12 @@ session = Session()
 packagename = 'egoio.db_tables'
 # TODO: Maybe there is a better container desigen???
 configuration = {'lopf':
-                {'Bus': None,
-                'Generator': {'GeneratorPqSet': ['p_set', 'p_max_pu']},
-                'Line': None,
-                'Transformer': None,
-                'Load': {'LoadPqSet': ['p_set', 'q_set']},
-                'Storage': {'StoragePqSet': ['p_set']}}}
+                 OrderedDict([('Bus', None),
+                 ('Generator', {'GeneratorPqSet': ['p_set', 'p_max_pu']}),
+                 ('Line', None),
+                 ('Transformer', None),
+                 ('Load', None),
+                 ('Storage', None)])}
 
 temp_ormclass = 'TempResolution'
 
@@ -90,6 +96,9 @@ class NetworkScenario(ScenarioBase):
 
         self.configure_timeindex()
 
+    def __repr__(self):
+        return 'NetworkScenario' + ' ' + self.scn_name
+
     def configure_timeindex(self):
         """
         """
@@ -142,37 +151,51 @@ class NetworkScenario(ScenarioBase):
 
         query = session.query(
             getattr(ormclass,id_column),
-            getattr(ormclass,column)).filter(and_(
+            getattr(ormclass,column)[self.start_h:self.end_h].\
+            label(column)).filter(and_(
             ormclass.scn_name == self.scn_name,
             ormclass.temp_id == self.temp_id))
 
         if self.version:
             query = query.filter(ormclass.version == self.version)
 
-        return pd.read_sql(query.statement,
+        df =  pd.read_sql(query.statement,
                            session.bind,
+                          columns=[column],
                            index_col=id_column)
+
+        df.index = df.index.astype(str)
+
+        # change of format to fit pypsa
+        df = df[column].apply(pd.Series).transpose()
+
+        df.index = self.timeindex
+
+        return df
 
 
     def build_network(self):
         """
         """
 
-        network = pypsa.Network(snapshots=self.timeindex)
-
         network = pypsa.Network()
+        network.set_snapshots(self.timeindex)
+
 
         for c, v in self.config.items():
             # TODO: This should be managed in the DATABASE itself
             if c == 'Storage':
-                network.import_components_from_dataframe(scenario.by_scenario(c),'StorageUnit')
+                network.import_components_from_dataframe(self.by_scenario(c),'StorageUnit')
             else:
-                network.import_components_from_dataframe(scenario.by_scenario(c),c)
+                network.import_components_from_dataframe(self.by_scenario(c),c)
 
             if isinstance(v, dict):
                 for cc, vv in v.items():
                     for col in vv:
-                        pass
+                        df = self.series_by_scenario(cc, col)
+                        network.import_series_from_dataframe(df, c, col)
+
+        return network
 
 
 scenario = NetworkScenario(session, method='lopf', end_h=10, start_h=1,
