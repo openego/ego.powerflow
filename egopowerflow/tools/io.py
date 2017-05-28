@@ -39,7 +39,7 @@ configuration = {'lopf':
                  ('Storage', None)])}
 
 temp_ormclass = 'TempResolution'
-
+carr_ormclass = 'Source'
 
 class ScenarioBase():
     """ Hide package/db stuff...
@@ -49,6 +49,7 @@ class ScenarioBase():
 
         global configuration
         global temp_ormclass
+        global carr_ormclass
 
         schema = 'model_draft' if version is None else 'grid'
 
@@ -68,6 +69,9 @@ class ScenarioBase():
 
         # map temporal resolution table
         self.map_ormclass(temp_ormclass)
+
+        # map carrier id to carrier table
+        self.map_ormclass(carr_ormclass)
 
     def map_ormclass(self, name):
 
@@ -119,6 +123,17 @@ class NetworkScenario(ScenarioBase):
         self.timeindex = timeindex[self.start_h - 1: self.end_h]
 
 
+    def id_to_carrier(self):
+
+        ormclass = self._mapped['Source']
+
+        query = session.query(ormclass)
+
+        # TODO column naming in database
+        id_to_carrier = {k.source_id:k.name for k in query.all()}
+
+        return id_to_carrier
+
     def by_scenario(self, name):
         """
         """
@@ -130,10 +145,14 @@ class NetworkScenario(ScenarioBase):
         if self.version:
             query = query.filter(ormclass.version == self.version)
 
-        return pd.read_sql(query.statement,
+        df = pd.read_sql(query.statement,
                            session.bind,
                            index_col=name.lower() + '_id')
 
+        if 'carrier' in df:
+            df.carrier = df.carrier.map(self.id_to_carrier())
+
+        return df
 
     def series_by_scenario(self, name, column):
         """
@@ -174,7 +193,7 @@ class NetworkScenario(ScenarioBase):
         return df
 
 
-    def build_network(self):
+    def build_network(self, *args, **kwargs):
         """
         """
 
@@ -183,17 +202,23 @@ class NetworkScenario(ScenarioBase):
 
 
         for c, v in self.config.items():
-            # TODO: This should be managed in the DATABASE itself
-            if c == 'Storage':
-                network.import_components_from_dataframe(self.by_scenario(c),'StorageUnit')
-            else:
-                network.import_components_from_dataframe(self.by_scenario(c),c)
+
+            # TODO: This is confusing, should be fixed in db
+            name = 'StorageUnit' if c == 'Storage' else c
+
+            network.import_components_from_dataframe(self.by_scenario(c), name)
 
             if isinstance(v, dict):
                 for cc, vv in v.items():
                     for col in vv:
                         df = self.series_by_scenario(cc, col)
-                        network.import_series_from_dataframe(df, c, col)
+                        try:
+                            network.import_series_from_dataframe(df, name, col)
+                        except (ValueError, AttributeError):
+                            print("Series %s of component %s could not be "
+                                  "imported" % (col, name))
+
+        self.network = network
 
         return network
 
