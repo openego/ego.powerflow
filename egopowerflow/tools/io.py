@@ -36,7 +36,8 @@ configuration = {'lopf':
                  ('Line', None),
                  ('Transformer', None),
                  ('Load', None),
-                 ('Storage', None)])}
+                ('Storage', {'StoragePqSet': ['p_set']})])
+                }
 
 temp_ormclass = 'TempResolution'
 carr_ormclass = 'Source'
@@ -183,19 +184,24 @@ class NetworkScenario(ScenarioBase):
         if self.version:
             query = query.filter(ormclass.version == self.version)
 
-        df =  pd.read_sql(query.statement,
-                           session.bind,
-                          columns=[column],
-                           index_col=id_column)
+        try:
+            df =  pd.io.sql.read_sql(query.statement,
+                            session.bind,
+                            columns=[column],
+                            index_col=id_column)
 
-        df.index = df.index.astype(str)
+            df.index = df.index.astype(str)
 
-        # change of format to fit pypsa
-        df = df[column].apply(pd.Series).transpose()
+            # change of format to fit pypsa
+            df = df[column].apply(pd.Series).transpose()
 
-        df.index = self.timeindex
+            df.index = self.timeindex
 
-        return df
+            assert not df.empty
+            return df
+
+        except (ValueError, AssertionError):
+            print("No data for %s in column %s." % (name, column))
 
 
     def build_network(self, *args, **kwargs):
