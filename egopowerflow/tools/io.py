@@ -101,7 +101,12 @@ class NetworkScenario(ScenarioBase):
         self.configure_timeindex()
 
     def __repr__(self):
-        return 'NetworkScenario' + ' ' + self.scn_name
+        r = ('NetworkScenario: %s' % self.scn_name)
+
+        if self.network:
+            r + "\n PyPSA network already build."
+
+        return r
 
     def configure_timeindex(self):
         """
