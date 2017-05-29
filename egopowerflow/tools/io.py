@@ -151,6 +151,10 @@ class NetworkScenario(ScenarioBase):
         if self.version:
             query = query.filter(ormclass.version == self.version)
 
+        # TODO: Better handled in db
+        if name == 'Transformer':
+            name = 'Trafo'
+
         df = pd.read_sql(query.statement,
                            session.bind,
                            index_col=name.lower() + '_id')
