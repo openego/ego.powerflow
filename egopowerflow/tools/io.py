@@ -105,7 +105,7 @@ class NetworkScenario(ScenarioBase):
         r = ('NetworkScenario: %s' % self.scn_name)
 
         if self.network:
-            r + "\n PyPSA network already build."
+            r += "\nPyPSA network ready."
 
         return r
 
