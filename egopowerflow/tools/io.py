@@ -228,7 +228,7 @@ class NetworkScenario(ScenarioBase):
                     for col in vv:
                         df = self.series_by_scenario(cc, col)
                         try:
-                            network.import_series_from_dataframe(df, name, col)
+                            pypsa.io.import_series_from_dataframe(network, df, name, col)
                         except (ValueError, AttributeError):
                             print("Series %s of component %s could not be "
                                   "imported" % (col, name))
