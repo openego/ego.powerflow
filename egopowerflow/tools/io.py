@@ -29,16 +29,14 @@ conn = engine('v0.2.10')
 Session = sessionmaker(bind=conn)
 session = Session()
 
+if pypsa.__version__ not in ['0.6.2', '0.8.0']:
+    print('Pypsa version %s not supported.' % pypsa.__version__)
 
 packagename = 'egoio.db_tables'
 configuration = json.load(open('config.json'), object_pairs_hook=OrderedDict)
 temp_ormclass = 'TempResolution'
 carr_ormclass = 'Source'
 
-# TODO: ego.powerflow takes care of divergences in database design and future
-# PyPSA changes from PyPSA's v0.6 on. This concept should be replaced, when the
-# oedb has a revision system in place, because sometime this will break!!!
-# def upgrade_structure(pypsa_version, mapped):
 
 class ScenarioBase():
     """ Hide package/db stuff...
@@ -52,7 +50,8 @@ class ScenarioBase():
 
         schema = 'model_draft' if version is None else 'grid'
 
-        self.config = configuration[method].copy()
+        config = kwargs.get('config', configuration.copy())
+        self.config = config[method]
         self.session = session
         self.version = version
         self._prefix = kwargs.get('prefix', 'EgoGridPfHv')
@@ -71,6 +70,8 @@ class ScenarioBase():
 
         # map carrier id to carrier table
         self.map_ormclass(carr_ormclass)
+
+
 
     def map_ormclass(self, name):
 
@@ -127,23 +128,19 @@ class NetworkScenario(ScenarioBase):
         self.timeindex = timeindex[self.start_h - 1: self.end_h]
 
 
-    def id_to_carrier(self):
+    def id_to_source(self):
 
         ormclass = self._mapped['Source']
-
         query = session.query(ormclass)
 
         # TODO column naming in database
-        id_to_carrier = {k.source_id:k.name for k in query.all()}
-
-        return id_to_carrier
+        return {k.source_id:k.name for k in query.all()}
 
     def by_scenario(self, name):
         """
         """
 
         ormclass = self._mapped[name]
-
         query = session.query(ormclass).filter(ormclass.scn_name == self.scn_name)
 
         if self.version:
@@ -158,7 +155,7 @@ class NetworkScenario(ScenarioBase):
                            index_col=name.lower() + '_id')
 
         if 'source' in df:
-            df.source = df.source.map(self.id_to_carrier())
+            df.source = df.source.map(self.id_to_source())
 
         return df
 
