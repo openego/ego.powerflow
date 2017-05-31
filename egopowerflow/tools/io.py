@@ -201,53 +201,100 @@ class NetworkScenario(ScenarioBase):
     def build_network(self, *args, **kwargs):
         """
         """
+    # TODO: build_network takes care of divergences in database design and future
+    # PyPSA changes from PyPSA's v0.6 on. This concept should be replaced, when the
+    # oedb has a revision system in place, because sometime this will break!!!
 
         network = pypsa.Network()
         network.set_snapshots(self.timeindex)
 
+        old_to_new_name = {}
+        timevarying_override = False
 
-        for c, v in self.config.items():
+
+        if pypsa.__version__ == '0.8.0':
+
+            old_to_new_name = {'Generator':
+                                {'p_min_pu_fixed': 'p_min_pu',
+                                 'p_max_pu_fixed': 'p_max_pu',
+                                 'source': 'carrier',
+                                 'dispatch': 'former_dispatch'},
+                               'Bus':
+                                {'current_type': 'carrier'},
+                               'Transformer':
+                                {'trafo_id': 'transformer_id'},
+                               'Storage':
+                                {'p_min_pu_fixed': 'p_min_pu',
+                                 'p_max_pu_fixed': 'p_max_pu'}}
+
+            timevarying_override = True
+
+
+        for comp, comp_t_dict in self.config.items():
 
             # TODO: This is confusing, should be fixed in db
-            name = 'StorageUnit' if c == 'Storage' else c
+            pypsa_comp_name = 'StorageUnit' if comp == 'Storage' else comp
 
-            network.import_components_from_dataframe(self.by_scenario(c), name)
+            df = self.by_scenario(comp)
 
-            if isinstance(v, dict):
-                for cc, vv in v.items():
-                    for col in vv:
-                        df = self.series_by_scenario(cc, col)
+            if comp in old_to_new_name:
+
+                tmp = old_to_new_name[comp]
+                df.rename(columns=tmp, inplace=True)
+
+            network.import_components_from_dataframe(df, pypsa_comp_name)
+
+            if comp_t_dict:
+
+                for comp_t, columns in comp_t_dict.items():
+
+                    for col in columns:
+
+                        df_series = self.series_by_scenario(comp_t, col)
+
+                        # TODO: VMagPuSet?
+                        if timevarying_override and comp == 'Generator':
+                            idx = df[df.former_dispatch == 'flexible'].index
+                            idx = [i for i in idx if i in df_series.columns]
+                            df_series.drop(idx, axis=1, inplace=True)
+
                         try:
-                            pypsa.io.import_series_from_dataframe(network, df, name, col)
+
+                            pypsa.io.import_series_from_dataframe(network,
+                                                                  df_series,
+                                                                  pypsa_comp_name,
+                                                                  col)
+
                         except (ValueError, AttributeError):
                             print("Series %s of component %s could not be "
-                                  "imported" % (col, name))
+                                  "imported" % (col, pypsa_comp_name))
 
         self.network = network
 
         return network
 
 # for debugging
-from egopowerflow.tools.plot import plot_line_loading, add_coordinates
-
-md = NetworkScenario(session, method='lopf', end_h=2, start_h=1,
-                          scn_name='Status Quo')
-mdnw = md.build_network()
-mdnw.lopf(snapshots=md.timeindex, solver_name='gurobi')
-mdnw = add_coordinates(mdnw)
-plot_line_loading(mdnw)
-
-mdpf = NetworkScenario(session, method='pf', end_h=2, start_h=1,
-                          scn_name='Status Quo')
-mdpfnw = mdpf.build_network()
-mdpfnw.pf(snapshots=mdpf.timeindex)
-
-gr = NetworkScenario(session, method='lopf', end_h=2, start_h=1, version='v0.2.10',
-                     prefix='EgoPfHv', scn_name='Status Quo')
-grnw = gr.build_network()
-grnw.lopf(snapshots=gr.timeindex, solver_name='gurobi')
-grnw = add_coordinates(grnw)
-plot_line_loading(grnw)
+#from egopowerflow.tools.plot import plot_line_loading, add_coordinates
+#
+#md = NetworkScenario(session, method='lopf', end_h=2, start_h=1,
+#                          scn_name='Status Quo')
+#
+#mdnw = md.build_network()
+#mdnw.lopf(snapshots=md.timeindex, solver_name='gurobi')
+#mdnw = add_coordinates(mdnw)
+#plot_line_loading(mdnw)
+#
+#mdpf = NetworkScenario(session, method='pf', end_h=2, start_h=1,
+#                          scn_name='Status Quo')
+#mdpfnw = mdpf.build_network()
+#mdpfnw.pf(snapshots=mdpf.timeindex)
+#
+#gr = NetworkScenario(session, method='lopf', end_h=2, start_h=1, version='v0.2.10',
+#                     prefix='EgoPfHv', scn_name='Status Quo')
+#grnw = gr.build_network()
+#grnw.lopf(snapshots=gr.timeindex, solver_name='gurobi')
+#grnw = add_coordinates(grnw)
+#plot_line_loading(grnw)
 
 def results_to_oedb(session, network, grid='mv'):
     """Return results obtained from PyPSA to oedb"""
