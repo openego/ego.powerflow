@@ -21,6 +21,7 @@ from sqlalchemy.orm.exc import NoResultFound
 from collections import OrderedDict
 import re
 import os
+import json
 
 
 # for debugging
@@ -30,22 +31,7 @@ session = Session()
 
 
 packagename = 'egoio.db_tables'
-# TODO: Maybe there is a better container desigen???
-configuration = {'lopf':
-                 OrderedDict([('Bus', None),
-                 ('Generator', {'GeneratorPqSet': ['p_set', 'p_max_pu']}),
-                 ('Line', None),
-                 ('Transformer', None),
-                ('Load', {'LoadPqSet': ['p_set', 'q_set']}),
-                ('Storage', {'StoragePqSet': ['p_set']})]),
-                 'pf': OrderedDict([('Bus', {'BusVMagSet':['v_mag_pu_set']}),
-                 ('Generator', {'GeneratorPqSet': ['p_set', 'q_set']}),
-                 ('Line', None),
-                 ('Transformer', None),
-                ('Load', {'LoadPqSet': ['p_set', 'q_set']}),
-                ('Storage', {'StoragePqSet': ['p_set', 'q_set']})])}
-
-
+configuration = json.load(open('config.json'), object_pairs_hook=OrderedDict)
 temp_ormclass = 'TempResolution'
 carr_ormclass = 'Source'
 
