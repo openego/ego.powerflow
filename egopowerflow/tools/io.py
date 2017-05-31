@@ -157,8 +157,8 @@ class NetworkScenario(ScenarioBase):
                            session.bind,
                            index_col=name.lower() + '_id')
 
-        if 'carrier' in df:
-            df.carrier = df.carrier.map(self.id_to_carrier())
+        if 'source' in df:
+            df.source = df.source.map(self.id_to_carrier())
 
         return df
 
