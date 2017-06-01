@@ -1,10 +1,19 @@
-""" DB wrapper for PyPSA...wip
+""" io.py
+
+Input/output operations between powerflow schema in the oedb and PyPSA.
+Additionally oedb wrapper classes to instantiate PyPSA network objects.
+
 
 Attributes
 ----------
 
 packagename: str
-    ...
+    Package containing orm class definitions
+temp_ormclass: str
+    Orm class name of table with temporal resolution
+carr_ormclass: str
+    Orm class name of table with carrier id to carrier name datasets
+
 """
 
 __copyright__ = ""
@@ -34,7 +43,7 @@ def loadcfg(path=''):
 
 
 class ScenarioBase():
-    """ Hide package/db stuff...
+    """ Base class to hide package/db handling
     """
 
     def __init__(self, session, method, version=None, *args, **kwargs):
@@ -96,8 +105,8 @@ class NetworkScenario(ScenarioBase):
     def __repr__(self):
         r = ('NetworkScenario: %s' % self.scn_name)
 
-        if self.network:
-            r += "\nPyPSA network ready."
+        if not self.network:
+            r += "\nTo create a PyPSA network call <NetworkScenario>.build_network()."
 
         return r
 
