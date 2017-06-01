@@ -37,7 +37,7 @@ carr_ormclass = 'Source'
 
 def loadcfg(path=''):
     if path == '':
-        dirname = os.path.dirname('.')
+        dirname = os.path.dirname(__file__)
         path = os.path.join(dirname, 'config.json')
     return json.load(open(path), object_pairs_hook=OrderedDict)
 
