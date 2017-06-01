@@ -12,16 +12,14 @@ __license__ = ""
 __author__ = ""
 
 import pypsa
-from sqlalchemy.orm import sessionmaker
-from oemof.db import engine
 from importlib import import_module
 import pandas as pd
-from sqlalchemy import or_, and_, exists, inspect
 from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import and_
 from collections import OrderedDict
 import re
-import os
 import json
+import os
 
 
 # for debugging
