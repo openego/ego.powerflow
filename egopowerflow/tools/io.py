@@ -281,29 +281,6 @@ class NetworkScenario(ScenarioBase):
 
         return network
 
-# for debugging
-#from egopowerflow.tools.plot import plot_line_loading, add_coordinates
-#
-#md = NetworkScenario(session, method='lopf', end_h=2, start_h=1,
-#                          scn_name='Status Quo')
-#
-#mdnw = md.build_network()
-#mdnw.lopf(snapshots=md.timeindex, solver_name='gurobi')
-#mdnw = add_coordinates(mdnw)
-#plot_line_loading(mdnw)
-#
-#mdpf = NetworkScenario(session, method='pf', end_h=2, start_h=1,
-#                          scn_name='Status Quo')
-#mdpfnw = mdpf.build_network()
-#mdpfnw.pf(snapshots=mdpf.timeindex)
-#
-#gr = NetworkScenario(session, method='lopf', end_h=2, start_h=1, version='v0.2.10',
-#                     prefix='EgoPfHv', scn_name='Status Quo')
-#grnw = gr.build_network()
-#grnw.lopf(snapshots=gr.timeindex, solver_name='gurobi')
-#grnw = add_coordinates(grnw)
-#plot_line_loading(grnw)
-
 def results_to_oedb(session, network, grid='mv'):
     """Return results obtained from PyPSA to oedb"""
     # moved this here to prevent error when not using the mv-schema
