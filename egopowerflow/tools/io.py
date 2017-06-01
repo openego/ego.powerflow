@@ -66,8 +66,6 @@ class ScenarioBase():
         # map carrier id to carrier table
         self.map_ormclass(carr_ormclass)
 
-
-
     def map_ormclass(self, name):
 
         global packagename
@@ -122,21 +120,21 @@ class NetworkScenario(ScenarioBase):
 
         self.timeindex = timeindex[self.start_h - 1: self.end_h]
 
-
     def id_to_source(self):
 
         ormclass = self._mapped['Source']
-        query = session.query(ormclass)
+        query = self.session.query(ormclass)
 
         # TODO column naming in database
-        return {k.source_id:k.name for k in query.all()}
+        return {k.source_id: k.name for k in query.all()}
 
     def by_scenario(self, name):
         """
         """
 
         ormclass = self._mapped[name]
-        query = session.query(ormclass).filter(ormclass.scn_name == self.scn_name)
+        query = self.session.query(ormclass).filter(
+            ormclass.scn_name == self.scn_name)
 
         if self.version:
             query = query.filter(ormclass.version == self.version)
@@ -146,8 +144,8 @@ class NetworkScenario(ScenarioBase):
             name = 'Trafo'
 
         df = pd.read_sql(query.statement,
-                           session.bind,
-                           index_col=name.lower() + '_id')
+                         self.session.bind,
+                         index_col=name.lower() + '_id')
 
         if 'source' in df:
             df.source = df.source.map(self.id_to_source())
@@ -164,20 +162,20 @@ class NetworkScenario(ScenarioBase):
         id_column = re.findall(r'[A-Z][^A-Z]*', name)[0] + '_' + 'id'
         id_column = id_column.lower()
 
-        query = session.query(
-            getattr(ormclass,id_column),
-            getattr(ormclass,column)[self.start_h:self.end_h].\
+        query = self.session.query(
+            getattr(ormclass, id_column),
+            getattr(ormclass, column)[self.start_h: self.end_h].
             label(column)).filter(and_(
-            ormclass.scn_name == self.scn_name,
-            ormclass.temp_id == self.temp_id))
+                ormclass.scn_name == self.scn_name,
+                ormclass.temp_id == self.temp_id))
 
         if self.version:
             query = query.filter(ormclass.version == self.version)
 
-        df =  pd.io.sql.read_sql(query.statement,
-                        session.bind,
-                        columns=[column],
-                        index_col=id_column)
+        df = pd.io.sql.read_sql(query.statement,
+                                self.session.bind,
+                                columns=[column],
+                                index_col=id_column)
 
         df.index = df.index.astype(str)
 
@@ -255,10 +253,11 @@ class NetworkScenario(ScenarioBase):
 
                         try:
 
-                            pypsa.io.import_series_from_dataframe(network,
-                                                                  df_series,
-                                                                  pypsa_comp_name,
-                                                                  col)
+                            pypsa.io.import_series_from_dataframe(
+                                network,
+                                df_series,
+                                pypsa_comp_name,
+                                col)
 
                         except (ValueError, AttributeError):
                             print("Series %s of component %s could not be "
