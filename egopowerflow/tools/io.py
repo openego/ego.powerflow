@@ -190,38 +190,43 @@ class NetworkScenario(ScenarioBase):
 
         return df
 
-
     def build_network(self, *args, **kwargs):
         """
         """
-    # TODO: build_network takes care of divergences in database design and future
-    # PyPSA changes from PyPSA's v0.6 on. This concept should be replaced, when the
-    # oedb has a revision system in place, because sometime this will break!!!
+        # TODO: build_network takes care of divergences in database design and
+        # future PyPSA changes from PyPSA's v0.6 on. This concept should be
+        # replaced, when the oedb has a revision system in place, because
+        # sometime this will break!!!
 
         network = pypsa.Network()
         network.set_snapshots(self.timeindex)
 
-        old_to_new_name = {}
         timevarying_override = False
-
 
         if pypsa.__version__ == '0.8.0':
 
             old_to_new_name = {'Generator':
-                                {'p_min_pu_fixed': 'p_min_pu',
-                                 'p_max_pu_fixed': 'p_max_pu',
-                                 'source': 'carrier',
-                                 'dispatch': 'former_dispatch'},
+                               {'p_min_pu_fixed': 'p_min_pu',
+                                'p_max_pu_fixed': 'p_max_pu',
+                                'source': 'carrier',
+                                'dispatch': 'former_dispatch'},
                                'Bus':
-                                {'current_type': 'carrier'},
+                               {'current_type': 'carrier'},
                                'Transformer':
-                                {'trafo_id': 'transformer_id'},
+                               {'trafo_id': 'transformer_id'},
                                'Storage':
-                                {'p_min_pu_fixed': 'p_min_pu',
-                                 'p_max_pu_fixed': 'p_max_pu'}}
+                               {'p_min_pu_fixed': 'p_min_pu',
+                                'p_max_pu_fixed': 'p_max_pu',
+                                'soc_cyclic': 'cyclic_state_of_charge',
+                                'soc_initial': 'state_of_charge_initial'}}
 
             timevarying_override = True
 
+        else:
+
+            old_to_new_name = {'Storage':
+                               {'soc_cyclic': 'cyclic_state_of_charge',
+                                'soc_initial': 'state_of_charge_initial'}}
 
         for comp, comp_t_dict in self.config.items():
 
