@@ -22,18 +22,15 @@ import json
 import os
 
 
-# for debugging
-conn = engine('v0.2.10')
-Session = sessionmaker(bind=conn)
-session = Session()
-
-if pypsa.__version__ not in ['0.6.2', '0.8.0']:
-    print('Pypsa version %s not supported.' % pypsa.__version__)
-
 packagename = 'egoio.db_tables'
-configuration = json.load(open('config.json'), object_pairs_hook=OrderedDict)
 temp_ormclass = 'TempResolution'
 carr_ormclass = 'Source'
+
+def loadcfg(path=''):
+    if path == '':
+        dirname = os.path.dirname('.')
+        path = os.path.join(dirname, 'config.json')
+    return json.load(open(path), object_pairs_hook=OrderedDict)
 
 
 class ScenarioBase():
@@ -42,14 +39,14 @@ class ScenarioBase():
 
     def __init__(self, session, method, version=None, *args, **kwargs):
 
-        global configuration
         global temp_ormclass
         global carr_ormclass
 
         schema = 'model_draft' if version is None else 'grid'
 
-        config = kwargs.get('config', configuration.copy())
-        self.config = config[method]
+        cfgpath = kwargs.get('cfgpath', '')
+        self.config = loadcfg(cfgpath)[method]
+
         self.session = session
         self.version = version
         self._prefix = kwargs.get('prefix', 'EgoGridPfHv')
