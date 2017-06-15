@@ -209,6 +209,33 @@ def curtailment(network, carrier='wind', filename=None):
     else:
         plt.savefig(filename)
         plt.close()
+        
+def storage_distribution(network, filename=None):
+    """
+    Plot storage distribution as circles on grid nodes
+
+    Displays storage size and distribution in network.
+    Parameters
+    ----------
+    network : PyPSA network container
+        Holds topology of grid including results from powerflow analysis
+    filename : str
+        Specify filename
+        If not given, figure will be show directly
+    """
+    storage_distribution = network.storage_units.p_nom_opt.groupby(network.storage_units.bus).sum()
+
+    fig,ax = plt.subplots(1,1)
+    fig.set_size_inches(6,6)
+
+
+    network.plot(bus_sizes=2*storage_distribution,ax=ax,title="Storage distribution")
+    
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        plt.close()
 
 
 def gen_dist(network, techs=None, snapshot=1, n_cols=3,gen_size=0.2, filename=None):
