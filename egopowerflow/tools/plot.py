@@ -156,7 +156,8 @@ def plot_stacked_gen(network, bus=None, resolution='GW', filename=None):
               'waste':'sienna',
               'wind':'skyblue',
               'slack':'pink',
-              'load shedding': 'red'}
+              'load shedding': 'red',
+              'nan':'black'}
 
 #    TODO: column reordering based on available columns
 
