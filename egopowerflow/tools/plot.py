@@ -228,9 +228,11 @@ def storage_distribution(network, filename=None):
 
     fig,ax = plt.subplots(1,1)
     fig.set_size_inches(6,6)
-
-
-    network.plot(bus_sizes=2*storage_distribution,ax=ax,title="Storage distribution")
+    
+    if sum(storage_distribution) == 0:
+         network.plot(bus_sizes=0,ax=ax,title="No extendable storage")
+    else:
+         network.plot(bus_sizes=2*storage_distribution,ax=ax,title="Storage distribution")
     
     if filename is None:
         plt.show()
