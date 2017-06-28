@@ -1,349 +1,295 @@
-"""This is the docstring for the example.py module.  Modules names should
-have short, all-lowercase names.  The module name may have underscores if
-this improves readability.
-Every module should have a docstring at the very top of the file.  The
-module's docstring may extend over multiple lines.  If your docstring does
-extend over multiple lines, the closing three quotation marks must be on
-a line by itself, preferably preceded by a blank line."""
+""" io.py
 
-__copyright__ = "tba"
-__license__ = "tba"
-__author__ = "tba"
+Input/output operations between powerflow schema in the oedb and PyPSA.
+Additionally oedb wrapper classes to instantiate PyPSA network objects.
 
+
+Attributes
+----------
+
+packagename: str
+    Package containing orm class definitions
+temp_ormclass: str
+    Orm class name of table with temporal resolution
+carr_ormclass: str
+    Orm class name of table with carrier id to carrier name datasets
+
+"""
+
+__copyright__ = ""
+__license__ = ""
+__author__ = ""
 
 import pypsa
+from importlib import import_module
 import pandas as pd
-
-from pypsa import io
-from numpy import isnan
-
-from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
-
-
-def init_pypsa_network(time_range_lim):
-    """
-    Instantiate PyPSA network
-
-    Parameters
-    ----------
-    time_range_lim:
-    Returns
-    -------
-    network: PyPSA network object
-        Contains powerflow problem
-    snapshots: iterable
-        Contains snapshots to be analyzed by powerplow calculation
-    """
-    network = pypsa.Network()
-    network.set_snapshots(time_range_lim)
-    snapshots = network.snapshots
-
-    return network, snapshots
+from sqlalchemy.orm.exc import NoResultFound
+from sqlalchemy import and_
+from collections import OrderedDict
+import re
+import json
+import os
 
 
-def get_pq_sets(session, table, scenario, start_h, end_h, column=None,\
-                index_col=None):
-    """
-    Parameters
-    ----------
-    session: SQLAlchemy sessino object
-    table: SQLAlchemy orm table object
-        Specified pq-sets table
-    scenario : str
-        Name of chosen scenario
-    start_h: int
-        First hour of year used for calculations
-    end_h: int
-        Last hour of year used for calculations
-    columns: list of strings
-        Columns to be selected from pq-sets table (default None)
-    index_col: string
-        Column to set index on (default None)
+packagename = 'egoio.db_tables'
+temp_ormclass = 'TempResolution'
+carr_ormclass = 'Source'
 
-    Returns
-    -------
-    pq_set: pandas DataFrame
-        Table with pq-Values to be applied in PF analysis
-    """
-    
-    if table.__name__ == 'GeneratorPqSet':
-        if column == 'p_set':
-            pq_query = session.query(table.generator_id, 
-                          table.p_set[start_h:end_h])
-        elif column == 'q_set':
-            pq_query = session.query(table.generator_id, 
-                          table.q_set[start_h:end_h])
-        elif column == 'p_min_pu':
-            pq_query = session.query(table.generator_id, 
-                          table.p_min_pu[start_h:end_h])
-        elif column == 'p_max_pu':
-            pq_query = session.query(table.generator_id, 
-                          table.p_max_pu[start_h:end_h]) 
-                          
-    elif table.__name__ == 'LoadPqSet':
-        if column == 'p_set':
-            pq_query = session.query(table.load_id, 
-                          table.p_set[start_h:end_h])
-        elif column == 'q_set':
-            pq_query = session.query(table.load_id, 
-                          table.q_set[start_h:end_h])
-                          
-    elif table.__name__ == 'BusVMagSet':
-        if column == 'v_mag_pu_set':
-            pq_query = session.query(table.bus_id, 
-                          table.v_mag_pu_set[start_h:end_h])
-    
-    elif table.__name__ == 'StoragePqSet':
-        if column == 'p_set':
-            pq_query = session.query(table.storage_id, 
-                          table.v_mag_pu_set[start_h:end_h])
-        elif column == 'q_set':
-            pq_query = session.query(table.storage_id, 
-                          table.q_set[start_h:end_h])
-        elif column == 'p_min_pu':
-            pq_query = session.query(table.storage_id, 
-                          table.p_min_pu[start_h:end_h])
-        elif column == 'p_max_pu':
-            pq_query = session.query(table.storage_id, 
-                          table.p_max_pu[start_h:end_h])
-        elif column == 'soc_set':
-            pq_query = session.query(table.storage_id, 
-                          table.soc_set[start_h:end_h])
-        elif column == 'inflow':
-            pq_query = session.query(table.storage_id, 
-                          table.inflow[start_h:end_h])
-                          
-    pq_query = pq_query.filter(table.scn_name==scenario)
-    pq_set = pd.read_sql_query(pq_query.statement,
-                               session.bind,
-                               index_col=index_col)
-
-    pq_set.columns = [column]
-    return pq_set
+def loadcfg(path=''):
+    if path == '':
+        dirname = os.path.dirname(__file__)
+        path = os.path.join(dirname, 'config.json')
+    return json.load(open(path), object_pairs_hook=OrderedDict)
 
 
-def get_timerange(session, temp_id_set, TempResolution, start_h=1, end_h=8760):
-    """
-    Parameters
-    ----------
-    session: SQLAlchemy session object
-    temp_id_set : int
-        ID of temporal coverage of power flow analysis
-    TempResolution: SQLAlchemy orm class
-        Table object of the table specifying temporal coverage of PFA
-    start_h: int
-        First hour of year used for calculations
-    end_h: int
-        Last hour of year used for calculations
-    Returns
-    -------
-    timerange: Pandas DatetimeIndex
-        Time range to be analyzed by PF
+class ScenarioBase():
+    """ Base class to hide package/db handling
     """
 
-    query = session.query(TempResolution.start_time).filter(
-        TempResolution.temp_id == temp_id_set)
-    start_date = query.all()
-    start_date = ''.join(str(i) for i in start_date[0])
+    def __init__(self, session, method, version=None, *args, **kwargs):
 
-    query = session.query(TempResolution.timesteps).filter(
-        TempResolution.temp_id == temp_id_set)
-    periods = query.all()
-    periods = int(''.join(str(i) for i in periods[0]))
+        global temp_ormclass
+        global carr_ormclass
 
-    query = session.query(TempResolution.resolution).filter(
-        TempResolution.temp_id == temp_id_set)
-    frequency = query.all()
-    frequency = ''.join(str(i) for i in frequency[0])
+        schema = 'model_draft' if version is None else 'grid'
 
-    timerange = pd.DatetimeIndex(freq=frequency,
-                                 periods=periods,
-                                 start=start_date)
-    timerange = timerange[start_h-1:end_h]
+        cfgpath = kwargs.get('cfgpath', '')
+        self.config = loadcfg(cfgpath)[method]
 
-    return timerange
+        self.session = session
+        self.version = version
+        self._prefix = kwargs.get('prefix', 'EgoGridPfHv')
+        self._pkg = import_module(packagename + '.' + schema)
+        self._mapped = {}
+
+        # map static and timevarying classes
+        for k, v in self.config.items():
+            self.map_ormclass(k)
+            if isinstance(v, dict):
+                for kk in v.keys():
+                    self.map_ormclass(kk)
+
+        # map temporal resolution table
+        self.map_ormclass(temp_ormclass)
+
+        # map carrier id to carrier table
+        self.map_ormclass(carr_ormclass)
+
+    def map_ormclass(self, name):
+
+        global packagename
+
+        try:
+            self._mapped[name] = getattr(self._pkg, self._prefix + name)
+
+        except AttributeError:
+            print('Warning: Relation %s does not exist.' % name)
 
 
-def transform_timeseries4pypsa(timeseries, timerange, column=None):
+class NetworkScenario(ScenarioBase):
     """
-    Transform pq-set timeseries to PyPSA compatible format
-
-    Parameters
-    ----------
-    timeseries: Pandas DataFrame
-        Containing timeseries
-
-    Returns
-    -------
-    pysa_timeseries: Pandas DataFrame
-        Reformated pq-set timeseries
-    """
-    timeseries.index = [str(i) for i in timeseries.index]
-    
-    if column is None:
-        pypsa_timeseries = timeseries.apply(
-            pd.Series).transpose().set_index(timerange)
-    else:
-        pypsa_timeseries = timeseries[column].apply(
-            pd.Series).transpose().set_index(timerange)
-
-    return pypsa_timeseries
-
-
-def import_components(tables, session, scenario):
-    """
-    Import PF power system components (Lines, Buses, Generators, ...)
-
-    Parameters
-    ----------
-    tables: list of SQLAlchemy orm table object
-        Considered power system component tables
-    session : SQLAlchemy session object
-        In this case it has to be a session connection to `OEDB`
-    scenario : str
-        Filter query by components of given scenario name
-
-    Returns
-    -------
-    components: dict
-
-    """
-    component_data = {}
-
-    for table in tables:
-        if table.__name__ is not 'Transformer':
-            id_col = str(table.__name__).lower() + "_id"
-        elif table.__name__ is 'Transformer':
-            id_col = 'trafo_id'
-        if table.__name__ is not 'Source':
-            query = session.query(table).filter(table.scn_name==scenario)
-        elif table.__name__ is 'Source':
-            query = session.query(table)            
-        component_data[table.__name__] = pd.read_sql_query(
-            query.statement, session.bind,
-            index_col=id_col)
-
-    return component_data
-
-def create_powerflow_problem(timerange, components):
-    """
-    Create PyPSA network object and fill with data
-
-    Parameters
-    ----------
-    timerange: Pandas DatetimeIndex
-        Time range to be analyzed by PF
-    components: dict
-
-    Returns
-    -------
-    network: PyPSA powerflow problem object
     """
 
-    # initialize powerflow problem
-    network, snapshots = init_pypsa_network(timerange)
-    
+    def __init__(self, session, *args, **kwargs):
+        super().__init__(session, *args, **kwargs)
 
-    # add components to network
-    for component in components.keys():
-        network.import_components_from_dataframe(components[component],
-                                                 component)
+        self.scn_name = kwargs.get('scn_name', 'Status Quo')
+        self.method   = kwargs.get('method', 'lopf')
+        self.start_h  = kwargs.get('start_h', 1)
+        self.end_h    = kwargs.get('end_h', 20)
+        self.temp_id  = kwargs.get('temp_id', 1)
+        self.network  = None
 
-    # add timeseries data
+        self.configure_timeindex()
 
-    return network, snapshots
+    def __repr__(self):
+        r = ('NetworkScenario: %s' % self.scn_name)
 
+        if not self.network:
+            r += "\nTo create a PyPSA network call <NetworkScenario>.build_network()."
 
-def import_pq_sets(session, network, pq_tables, timerange, scenario, 
-                   columns=None, start_h=1, end_h=8760):
-    """
-    Import pq-set series to PyPSA network
+        return r
 
-    Parameters
-    ----------
-    session : SQLAlchemy session object
-        In this case it has to be a session connection to `OEDB`
-    network : PyPSA network container
-    pq_tables: Pandas DataFrame
-        PQ set values for each time step
-    scenario : str
-        Filter query by pq-sets for components of given scenario name
-    columns: list of strings
-        Columns to be selected from pq-sets table (default None)
-    start_h: int
-        First hour of year used for calculations
-    end_h: int
-        Last hour of year used for calculations
-        
-    Returns
-    -------
-    network: PyPSA powerflow problem object
-        Altered network object
-    """
-    
-    for table in pq_tables:
-        name = table.__table__.name.split('_')[0]
-        index_col = name + '_id'
-        component_name = name[:1].upper() + name[1:]
-        
-        for column in columns:
-            pq_set = get_pq_sets(session,
-                                 table,
-                                 scenario,
-                                 column=column,
-                                 index_col=index_col,
-                                 start_h=start_h,
-                                 end_h=end_h)
-            
-            series = transform_timeseries4pypsa(pq_set,
-                                                timerange,
-                                                column=column)
-            io.import_series_from_dataframe(network,
-                                            series,
-                                            component_name,
-                                            column)
+    def configure_timeindex(self):
+        """
+        """
 
-    return network
+        try:
 
+            ormclass = self._mapped['TempResolution']
+            tr = self.session.query(ormclass).filter(
+                ormclass.temp_id == self.temp_id).one()
 
-def add_source_types(session, network, table):
-    """
-    Get source table from OEDB, change source_id to source name
-    
-    Parameters
-    ----------
-    session : SQLAlchemy session object
-        In this case it has to be a session connection to `OEDB`
-    network : PyPSA network container
-    table:  SQLAlchemy orm table object ("Source" table)
-        Considered power system component tables
+        except (KeyError, NoResultFound):
+            print('temp_id %s does not exist.' % self.temp_id)
 
-    Returns
-    -------
-    None 
-    """
-    source = import_components(tables = [table], 
-                               session = session, 
-                               scenario = None)['Source']
-    source = source.drop('commentary',1)
-    
-    network.generators = network.generators.drop('carrier',1).\
-                         rename(columns={'source':'carrier'})
-    
-    for idx, row in network.generators.iterrows():
-        if isnan(network.generators.loc[idx].carrier): 
-            network.generators.loc[idx, 'carrier'] = 'unknown'
+        timeindex = pd.DatetimeIndex(start=tr.start_time,
+                                     periods=tr.timesteps,
+                                     freq=tr.resolution)
+
+        self.timeindex = timeindex[self.start_h - 1: self.end_h]
+
+    def id_to_source(self):
+
+        ormclass = self._mapped['Source']
+        query = self.session.query(ormclass)
+
+        # TODO column naming in database
+        return {k.source_id: k.name for k in query.all()}
+
+    def by_scenario(self, name):
+        """
+        """
+
+        ormclass = self._mapped[name]
+        query = self.session.query(ormclass).filter(
+            ormclass.scn_name == self.scn_name)
+
+        if self.version:
+            query = query.filter(ormclass.version == self.version)
+
+        # TODO: Better handled in db
+        if name == 'Transformer':
+            name = 'Trafo'
+
+        df = pd.read_sql(query.statement,
+                         self.session.bind,
+                         index_col=name.lower() + '_id')
+
+        if 'source' in df:
+            df.source = df.source.map(self.id_to_source())
+
+        return df
+
+    def series_by_scenario(self, name, column):
+        """
+        """
+
+        ormclass = self._mapped[name]
+
+        # TODO: pls make more robust
+        id_column = re.findall(r'[A-Z][^A-Z]*', name)[0] + '_' + 'id'
+        id_column = id_column.lower()
+
+        query = self.session.query(
+            getattr(ormclass, id_column),
+            getattr(ormclass, column)[self.start_h: self.end_h].
+            label(column)).filter(and_(
+                ormclass.scn_name == self.scn_name,
+                ormclass.temp_id == self.temp_id))
+
+        if self.version:
+            query = query.filter(ormclass.version == self.version)
+
+        df = pd.io.sql.read_sql(query.statement,
+                                self.session.bind,
+                                columns=[column],
+                                index_col=id_column)
+
+        df.index = df.index.astype(str)
+
+        # change of format to fit pypsa
+        df = df[column].apply(pd.Series).transpose()
+
+        try:
+            assert not df.empty
+            df.index = self.timeindex
+        except AssertionError:
+            print("No data for %s in column %s." % (name, column))
+
+        return df
+
+    def build_network(self, *args, **kwargs):
+        """
+        """
+        # TODO: build_network takes care of divergences in database design and
+        # future PyPSA changes from PyPSA's v0.6 on. This concept should be
+        # replaced, when the oedb has a revision system in place, because
+        # sometime this will break!!!
+
+        network = pypsa.Network()
+        network.set_snapshots(self.timeindex)
+
+        timevarying_override = False
+
+        if pypsa.__version__ == '0.8.0':
+
+            old_to_new_name = {'Generator':
+                               {'p_min_pu_fixed': 'p_min_pu',
+                                'p_max_pu_fixed': 'p_max_pu',
+                                'source': 'carrier',
+                                'dispatch': 'former_dispatch'},
+                               'Bus':
+                               {'current_type': 'carrier'},
+                               'Transformer':
+                               {'trafo_id': 'transformer_id'},
+                               'Storage':
+                               {'p_min_pu_fixed': 'p_min_pu',
+                                'p_max_pu_fixed': 'p_max_pu',
+                                'soc_cyclic': 'cyclic_state_of_charge',
+                                'soc_initial': 'state_of_charge_initial'}}
+
+            timevarying_override = True
+
         else:
-            source_name = source.loc[row['carrier'],'name']
-            network.generators.loc[idx, 'carrier'] = source_name
 
-    source = source.set_index(keys = source.name.values).drop('name',1)
-    network.import_components_from_dataframe(source, 'Carrier')
+            old_to_new_name = {'Storage':
+                               {'soc_cyclic': 'cyclic_state_of_charge',
+                                'soc_initial': 'state_of_charge_initial'}}
 
+        for comp, comp_t_dict in self.config.items():
 
-def results_to_oedb(session, network):
+            # TODO: This is confusing, should be fixed in db
+            pypsa_comp_name = 'StorageUnit' if comp == 'Storage' else comp
+
+            df = self.by_scenario(comp)
+
+            if comp in old_to_new_name:
+
+                tmp = old_to_new_name[comp]
+                df.rename(columns=tmp, inplace=True)
+
+            network.import_components_from_dataframe(df, pypsa_comp_name)
+
+            if comp_t_dict:
+
+                for comp_t, columns in comp_t_dict.items():
+
+                    for col in columns:
+
+                        df_series = self.series_by_scenario(comp_t, col)
+
+                        # TODO: VMagPuSet?
+                        if timevarying_override and comp == 'Generator':
+                            idx = df[df.former_dispatch == 'flexible'].index
+                            idx = [i for i in idx if i in df_series.columns]
+                            df_series.drop(idx, axis=1, inplace=True)
+
+                        try:
+
+                            pypsa.io.import_series_from_dataframe(
+                                network,
+                                df_series,
+                                pypsa_comp_name,
+                                col)
+
+                        except (ValueError, AttributeError):
+                            print("Series %s of component %s could not be "
+                                  "imported" % (col, pypsa_comp_name))
+
+        self.network = network
+
+        return network
+
+def results_to_oedb(session, network, grid='mv'):
     """Return results obtained from PyPSA to oedb"""
-
+    # moved this here to prevent error when not using the mv-schema
+    if grid.lower() == 'mv':
+        from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
+    elif grid.lower() == 'hv':
+        print('Not implemented: Result schema for HV missing')
+    else:
+        print('Please enter mv or hv!')
     # from oemof import db
     # engine = db.engine(section='oedb')
     # from egoio.db_tables import calc_ego_mv_powerflow
@@ -389,6 +335,7 @@ def results_to_oedb(session, network):
         session.add(res_transformer)
     session.commit()
 
-    
 if __name__ == '__main__':
+    if pypsa.__version__ not in ['0.6.2', '0.8.0']:
+        print('Pypsa version %s not supported.' % pypsa.__version__)
     pass
