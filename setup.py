@@ -23,6 +23,6 @@ setup(name='ego.powerflow',
                         'pypsa >= 0.8.0, <= 0.8.0',
                         'sqlalchemy >= 1.0.15, <= 1.1.4',
                         'oemof.db >=0.0.4, <=0.0.4',
-                        'geoalchemy2 >= 0.3.0, <=0.3.0',
+                        'geoalchemy2 >= 0.3.0, <=0.4.0',
                         'matplotlib >= 1.5.3, <=1.5.3']
      )
