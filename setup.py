@@ -6,8 +6,8 @@ module's docstring may extend over multiple lines.  If your docstring does
 extend over multiple lines, the closing three quotation marks must be on
 a line by itself, preferably preceded by a blank line."""
 
-__copyright__ = "tba"
-__license__ = "tba"
+__copyright__ = "Reiner Lemoine Institut, ZNES, Next Energy, IKS Uni Magdeburg"
+__license__ = "GNU Affero General Public License Version 3 (AGPL-3.0)"
 __author__ = "gplssm"
 
 
@@ -16,8 +16,8 @@ from setuptools import find_packages, setup
 setup(name='ego.powerflow',
       author='openego development group',
       description='Powerflow analysis based on PyPSA',
-      version='0.0.1',
-      license="GNU GENERAL PUBLIC LICENSE Version 3",
+      version='0.0.3',
+      license="GNU Affero General Public License Version 3 (AGPL-3.0)",
       packages=find_packages(),
       install_requires=['pandas >= 0.17.0, <=0.19.1',
                         'pypsa >= 0.8.0, <= 0.8.0',
