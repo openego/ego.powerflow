@@ -156,7 +156,8 @@ def plot_stacked_gen(network, bus=None, resolution='GW', filename=None):
               'waste':'sienna',
               'wind':'skyblue',
               'slack':'pink',
-              'load shedding': 'red'}
+              'load shedding': 'red',
+              'nan':'m'}
 
 #    TODO: column reordering based on available columns
 
@@ -209,6 +210,100 @@ def curtailment(network, carrier='wind', filename=None):
     else:
         plt.savefig(filename)
         plt.close()
+        
+def storage_distribution(network, filename=None):
+    """
+    Plot storage distribution as circles on grid nodes
+
+    Displays storage size and distribution in network.
+    Parameters
+    ----------
+    network : PyPSA network container
+        Holds topology of grid including results from powerflow analysis
+    filename : str
+        Specify filename
+        If not given, figure will be show directly
+    """
+    storage_distribution = network.storage_units.p_nom_opt.groupby(network.storage_units.bus).sum()
+
+    fig,ax = plt.subplots(1,1)
+    fig.set_size_inches(6,6)
+    
+    if sum(storage_distribution) == 0:
+         network.plot(bus_sizes=0,ax=ax,title="No extendable storage")
+    else:
+         network.plot(bus_sizes=2*storage_distribution,ax=ax,title="Storage distribution")
+    
+    if filename is None:
+        plt.show()
+    else:
+        plt.savefig(filename)
+        plt.close()
+
+
+def gen_dist(network, techs=None, snapshot=1, n_cols=3,gen_size=0.2, filename=None):
+
+    """
+    Generation distribution
+
+    ----------
+    network : PyPSA network container
+        Holds topology of grid including results from powerflow analysis
+    techs : dict 
+        type of technologies which shall be plotted
+    snapshot : int
+        snapshot
+    n_cols : int 
+        number of columns of the plot
+    gen_size : num 
+        size of generation bubbles at the buses
+    filename : str
+        Specify filename
+        If not given, figure will be show directly
+    """
+    if techs is None:
+        techs = network.generators.carrier.unique()
+    else:
+        techs = techs
+
+    n_graphs = len(techs)
+    n_cols = n_cols
+
+    if n_graphs % n_cols == 0:
+        n_rows = n_graphs // n_cols
+    else:
+        n_rows = n_graphs // n_cols + 1
+
+    
+    fig, axes = plt.subplots(nrows=n_rows, ncols=n_cols)
+
+    size = 4
+
+    fig.set_size_inches(size*n_cols,size*n_rows)
+
+    for i,tech in enumerate(techs):
+        i_row = i // n_cols
+        i_col = i % n_cols
+    
+        ax = axes[i_row,i_col]
+    
+        gens = network.generators[network.generators.carrier == tech]
+        gen_distribution = network.generators_t.p[gens.index].\
+        loc[network.snapshots[snapshot]].groupby(network.generators.bus).sum().\
+        reindex(network.buses.index,fill_value=0.)
+    
+   
+    
+        network.plot(ax=ax,bus_sizes=gen_size*gen_distribution, line_widths=0.1)
+    
+        ax.set_title(tech)
+    if filename is None:
+       plt.show()
+    else:
+       plt.savefig(filename)
+       plt.close()
+
+
 
 
 def gen_dist(network, techs=None, snapshot=1, n_cols=3,gen_size=0.2, filename=None):
