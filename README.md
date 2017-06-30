@@ -1,20 +1,8 @@
 # ego.powerflow
 A power flow app to solve AC and DC powerflow problems using PyPSA
 
-LICENSE
--------
+# Copyleft
 
-Copyright (C) 2017 openego project group
-
-This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version.
-
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-details.
-
-You should have received a copy of the GNU General Public License along with
-this program. If not, see https://www.gnu.org/licenses/.
+Code licensed under "GNU Affero General Public License Version 3 (AGPL-3.0)"
+It is a collaborative work with several copyright owner:
+Cite as "ego.powerflow" © Flensburg University of Applied Sciences, Centre for Sustainable Energy Systems © Europa-Universität Flensburg, Centre for Sustainable Energy Systems © Reiner Lemoine Institut © DLR Institute for Networked Energy Systems"
