@@ -24,7 +24,7 @@ import pypsa
 from importlib import import_module
 import pandas as pd
 from sqlalchemy.orm.exc import NoResultFound
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from collections import OrderedDict
 import re
 import json
@@ -281,13 +281,24 @@ class NetworkScenario(ScenarioBase):
 
         return network
 
-def results_to_oedb(session, network, grid='mv'):
+def results_to_oedb(session, network, grid, args):
     """Return results obtained from PyPSA to oedb"""
     # moved this here to prevent error when not using the mv-schema
+    import datetime
     if grid.lower() == 'mv':
-        from egoio.db_tables.calc_ego_mv_powerflow import ResBus, ResLine, ResTransformer
+        from egoio.db_tables.model_draft import EgoGridPfMvBusResult as BusResult,\
+                                                EgoGridPfMvStorageResult as StorageResult,\
+                                                EgoGridPfMvGeneratorResult as GeneratorResult,\
+                                                EgoGridPfMvLineResult as LineResult,\
+                                                EgoGridPfMvTransformerResult as TransformerResult,\
+                                                EgoGridPfMvResultMeta as ResultMeta
     elif grid.lower() == 'hv':
-        print('Not implemented: Result schema for HV missing')
+        from egoio.db_tables.model_draft import EgoGridPfHvBusResult as BusResult,\
+                                                EgoGridPfHvStorageResult as StorageResult,\
+                                                EgoGridPfHvGeneratorResult as GeneratorResult,\
+                                                EgoGridPfHvLineResult as LineResult,\
+                                                EgoGridPfHvTransformerResult as TransformerResult,\
+                                                EgoGridPfHvResultMeta as ResultMeta
     else:
         print('Please enter mv or hv!')
     # from oemof import db
@@ -296,43 +307,113 @@ def results_to_oedb(session, network, grid='mv'):
     # calc_ego_mv_powerflow.Base.metadata.create_all(engine)
 
     #TODO: make this more safe, at least inform the user about the deleting results
-    # empty all results table
-    session.query(ResBus).delete()
-    session.query(ResLine).delete()
-    session.query(ResTransformer).delete()
-    session.commit()
+#    empty all results table
+#    session.query(BusResult).delete()
+#    session.query(StorageResult).delete()
+#    session.query(GeneratorResult).delete()
+#    session.query(LineResult).delete()
+#    session.query(TransformerResult).delete()
+#    session.commit()
 
-    # insert voltage at buses to database
+    # get last result id and get new one
+    last_res_id = session.query(func.max(ResultMeta.result_id)).scalar()
+    if last_res_id == None:
+        new_res_id = 1
+    else: 
+        new_res_id = last_res_id + 1
+    
+    # result meta data
+    
+    res_meta = ResultMeta(
+            result_id=new_res_id,
+            scn_name=args['scn_name'],
+            calc_date= datetime.datetime.now(),
+            calc_type=args['method'],
+            commentary=args['comments']
+    )
+    session.add(res_meta)
+    session.commit()
+    
+    # bus results
     for col in network.buses_t.v_mag_pu:
-        res_bus = ResBus(
+        res_bus = BusResult(
+            result_id=new_res_id,
             bus_id=col,
-            v_mag_pu=network.buses_t.v_mag_pu[col].tolist()
+            p=network.buses_t.p[col].tolost(),
+            q=network.buses_t.q[col].tolost(),
+            v_mag_pu=network.buses_t.v_mag_pu[col].tolist(),
+            v_ang=network.buses_t.v_ang[col].tolist(),
+            marginal_price=network.buses_t.marginal_price[col].tolist()
+            
         )
         session.add(res_bus)
     session.commit()
 
-    # insert active and reactive power of lines to database
+
+    # generator results
+    for col in network.generators_t.p:
+        res_gen = GeneratorResult(
+            result_id=new_res_id,
+            generator_id=col,
+            p=network.generators_t.p[col].tolost(),
+            q=network.generators_t.q[col].tolost(),
+            p_nom_opt=network.generators_t.p_nom_opt[col].tolist(),
+            status=network.generators_t.status[col].tolist()
+            
+        )
+        session.add(res_gen)
+    session.commit()
+
+
+    # line results
     for col in network.lines_t.p0:
-        res_line = ResLine(
+        res_line = LineResult(
+            result_id=new_res_id, 
             line_id=col,
             p0=network.lines_t.p0[col].tolist(),
             q0=network.lines_t.q0[col].tolist(),
             p1=network.lines_t.p1[col].tolist(),
-            q1=network.lines_t.q1[col].tolist()
+            q1=network.lines_t.q1[col].tolist(),
+            x_pu=network.lines.x_pu,
+            r_pu=network.lines.r_pu,
+            g_pu=network.lines.g_pu,
+            b_pu=network.lines.b_pu,
+            s_nom_opt=network.lines.s_nom_opt
+            
         )
         session.add(res_line)
     session.commit()
 
     # insert active and reactive power of lines to database
     for col in network.transformers_t.p0:
-        res_transformer = ResLine(
+        res_transformer = TransformerResult(
+            result_id=new_res_id,
             trafo_id=col,
-            p0=network.transformers_t.p0[col].tolist(),
-            q0=network.transformers_t.q0[col].tolist(),
-            p1=network.transformers_t.p1[col].tolist(),
-            q1=network.transformers_t.q1[col].tolist()
+            p0=network.lines_t.p0[col].tolist(),
+            q0=network.lines_t.q0[col].tolist(),
+            p1=network.lines_t.p1[col].tolist(),
+            q1=network.lines_t.q1[col].tolist(),
+            x_pu=network.lines.x_pu,
+            r_pu=network.lines.r_pu,
+            g_pu=network.lines.g_pu,
+            b_pu=network.lines.b_pu,
+            s_nom_opt=network.lines.s_nom_opt
         )
         session.add(res_transformer)
+    session.commit()
+    
+    # storage_units results
+    for col in network.storage_units.p:
+        res_sto = StorageResult(
+            result_id=new_res_id,
+            generator_id=col,
+            p=network.generators_t.p[col].tolost(),
+            q=network.generators_t.q[col].tolost(),
+            p_nom_opt=network.generators_t.p_nom_opt[col].tolist(),
+            status=network.generators_t.status[col].tolist()
+            
+        )
+        session.add(res_sto)
     session.commit()
 
 if __name__ == '__main__':
