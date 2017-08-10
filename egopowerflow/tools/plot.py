@@ -234,7 +234,7 @@ def storage_distribution(network, filename=None):
     if sum(storage_distribution) == 0:
          network.plot(bus_sizes=0,ax=ax,title="No extendable storage")
     else:
-         network.plot(bus_sizes=storage_distribution,ax=ax,line_widths=0.1,title="Storage distribution")
+         network.plot(bus_sizes=storage_distribution,ax=ax,line_widths=0.3,title="Storage distribution")
     
     if filename is None:
         plt.show()
