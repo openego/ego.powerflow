@@ -349,8 +349,8 @@ def results_to_oedb(session, network, grid, args):
             method=args['method'],
             network_clustering = args['network_clustering'],
             gridversion = args['gridversion'],
-            start_step = args['start_h'],
-            end_step = args['end_h'],
+            start_snapshot = args['start_h'],
+            end_snapshot = args['end_h'],
             snapshots = network.snapshots.tolist(),
             solver = args['solver'],
             branch_cap_factor = args['branch_capacity_factor'],
@@ -400,6 +400,7 @@ def results_to_oedb(session, network, grid, args):
         session.add(res_bus)
     session.commit()
 
+# not working yet since ego.io classes are not yet iterable
 #    for col in network.buses_t.v_mag_pu:
 #        res_bus = BusResult()
 #        res_bus.result_id = new_res_id
