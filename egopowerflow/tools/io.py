@@ -95,8 +95,8 @@ class NetworkScenario(ScenarioBase):
 
         self.scn_name = kwargs.get('scn_name', 'Status Quo')
         self.method   = kwargs.get('method', 'lopf')
-        self.start_h  = kwargs.get('start_h', 1)
-        self.end_h    = kwargs.get('end_h', 20)
+        self.start_snapshot  = kwargs.get('start_snapshot', 1)
+        self.end_snapshot    = kwargs.get('end_snapshot', 20)
         self.temp_id  = kwargs.get('temp_id', 1)
         self.network  = None
 
@@ -127,7 +127,7 @@ class NetworkScenario(ScenarioBase):
                                      periods=tr.timesteps,
                                      freq=tr.resolution)
 
-        self.timeindex = timeindex[self.start_h - 1: self.end_h]
+        self.timeindex = timeindex[self.start_snapshot - 1: self.end_snapshot]
 
     def id_to_source(self):
 
@@ -173,7 +173,7 @@ class NetworkScenario(ScenarioBase):
 
         query = self.session.query(
             getattr(ormclass, id_column),
-            getattr(ormclass, column)[self.start_h: self.end_h].
+            getattr(ormclass, column)[self.start_snapshot: self.end_snapshot].
             label(column)).filter(and_(
                 ormclass.scn_name == self.scn_name,
                 ormclass.temp_id == self.temp_id))
@@ -349,8 +349,8 @@ def results_to_oedb(session, network, grid, args):
             method=args['method'],
             network_clustering = args['network_clustering'],
             gridversion = args['gridversion'],
-            start_snapshot = args['start_h'],
-            end_snapshot = args['end_h'],
+            start_snapshot = args['start_snapshot'],
+            end_snapshot = args['end_snapshot'],
             snapshots = network.snapshots.tolist(),
             solver = args['solver'],
             branch_cap_factor = args['branch_capacity_factor'],
