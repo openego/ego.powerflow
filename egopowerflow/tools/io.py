@@ -340,25 +340,36 @@ def results_to_oedb(session, network, grid, args):
         new_res_id = 1
     else: 
         new_res_id = last_res_id + 1
+       
+    # result meta data 
+    res_meta = ResultMeta()
+    meta_misc = []
+    for arg, value in args.items():
+        if arg not in dir(res_meta) and arg not in ['db','lpfile','results','export']:
+            meta_misc.append([arg,str(value)])
+
+    res_meta.result_id=new_res_id
+    res_meta.scn_name=args['scn_name']
+    res_meta.calc_date= datetime.datetime.now()
+    res_meta.method=args['method']
+    res_meta.gridversion = args['gridversion']
+    res_meta.start_snapshot = args['start_snapshot']
+    res_meta.end_snapshot = args['end_snapshot']
+    res_meta.snapshots = network.snapshots.tolist()
+    res_meta.solver = args['solver']
+    res_meta.branch_capacity_factor = args['branch_capacity_factor']
+    res_meta.pf_post_lopf = args['pf_post_lopf']
+    res_meta.network_clustering = args['network_clustering']
+    res_meta.storage_extendable = args['storage_extendable']
+    res_meta.load_shedding = args['load_shedding']
+    res_meta.generator_noise = args['generator_noise']
+    res_meta.minimize_loading=args['minimize_loading']
+    res_meta.k_mean_clustering=args['k_mean_clustering']
+    res_meta.parallelisation=args['parallelisation']
+    res_meta.line_grouping=args['line_grouping']
+    res_meta.misc=meta_misc
+    res_meta.comments=args['comments']
     
-    # result meta data    
-    res_meta = ResultMeta(
-            result_id=new_res_id,
-            scn_name=args['scn_name'],
-            calc_date= datetime.datetime.now(),
-            method=args['method'],
-            network_clustering = args['network_clustering'],
-            gridversion = args['gridversion'],
-            start_snapshot = args['start_snapshot'],
-            end_snapshot = args['end_snapshot'],
-            snapshots = network.snapshots.tolist(),
-            solver = args['solver'],
-            branch_cap_factor = args['branch_capacity_factor'],
-            storage_extendable = args['storage_extendable'],
-            load_shedding = args['load_shedding'],
-            generator_noise = args['generator_noise'],
-            commentary=args['comments']
-    )
     session.add(res_meta)
     session.commit()
     
