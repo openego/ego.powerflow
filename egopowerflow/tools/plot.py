@@ -38,8 +38,8 @@ def add_coordinates(network):
 
     return network
     
-def plot_line_loading(network, timestep=0, filename=None, fixed_colors=False,
-                      boundaries=[], arrows=False):
+def plot_line_loading(network, timestep=0, filename=None, boundaries=[],
+                      arrows=False):
     """
     Plot line loading as color on lines
 
@@ -70,21 +70,16 @@ def plot_line_loading(network, timestep=0, filename=None, fixed_colors=False,
 
     # do the plotting
     ll = network.plot(line_colors=abs(loading), line_cmap=cmap,
-                      title="Line loading", bus_sizes=0, line_widths=0.55)
+                      title="Line loading", line_widths=0.55)
     
     # add colorbar, note mappable sliced from ll by [1]
 
-    if fixed_colors:
-        v = np.linspace(0, 100, 1001)
-        cb = plt.colorbar(ll[1], boundaries=v, ticks=v[0::100])
-        cb.set_clim(vmin=0, vmax=100)
-    elif not boundaries:
+    if not boundaries:
         cb = plt.colorbar(ll[1])
     elif boundaries:
-        v = np.linspace(boundaries[0], boundaries[1],
-                        (boundaries[1]-boundaries[0])*10+1)
+        v = np.linspace(boundaries[0], boundaries[1], 101)
         cb = plt.colorbar(ll[1], boundaries=v,
-                          ticks=v[boundaries[0]::boundaries[1]])
+                          ticks=v[0:101:10])
         cb.set_clim(vmin=boundaries[0], vmax=boundaries[1])
 
     cb.set_label('Line loading in %')
