@@ -194,6 +194,9 @@ def plot_stacked_gen(network, bus=None, resolution='GW', filename=None):
                        apply(lambda x: x if x > 0 else 0)], axis=1).\
                        groupby(network.generators.carrier, axis=1).sum()
         load = network.loads_t.p.sum(axis=1)
+        if hasattr(network, 'foreign_trade'):
+            p_by_carrier['imports'] = network.foreign_trade[network.foreign_trade > 0]
+            p_by_carrier['imports'] = p_by_carrier['imports'].fillna(0)
     # sum for a single bus
     elif bus is not None:
         filtered_gens = network.generators[network.generators['bus'] == bus]
@@ -219,7 +222,8 @@ def plot_stacked_gen(network, bus=None, resolution='GW', filename=None):
               'wind':'skyblue',
               'slack':'pink',
               'load shedding': 'red',
-              'nan':'m'}
+              'nan':'m',
+              'imports':'salmon'}
 
 #    TODO: column reordering based on available columns
 
